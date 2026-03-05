@@ -17,7 +17,7 @@
     from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
   // ▼▼▼ ここにFirebaseの設定を貼り替えてください ▼▼▼
-  const firebaseConfig = {
+const firebaseConfig = {
     apiKey: "AIzaSyCigiPbiTWq6ggIOc5cDhRT1wHp-u1vcMg",
     authDomain: "mikiri-on-line.firebaseapp.com",
     databaseURL: "https://mikiri-on-line-default-rtdb.firebaseio.com",
@@ -607,7 +607,8 @@ canvas {
 
 /* ============================================================
   勝利演出オーバーレイ
-  ゲーム終了後の勝者発表画面
+  z-index: 200 にして canvas(5) / HUD(20) / stampToggle(31) より
+  必ず前面に出るようにする。これでボタンのクリックが通る。
 ============================================================ */
 #winOverlay {
   display: none;
@@ -615,7 +616,7 @@ canvas {
   background: radial-gradient(ellipse at center, rgba(255,240,180,.97) 0%, rgba(255,220,120,.97) 100%);
   backdrop-filter: blur(6px);
   flex-direction: column; align-items: center; justify-content: center;
-  z-index: 80;
+  z-index: 200; /* ← 80→200: canvas・HUD・スタンプより前面 */
 }
 #winOverlay.visible { display: flex; }
 
@@ -826,15 +827,26 @@ canvas {
 
 <!-- ========================================================
   勝利演出オーバーレイ
+  ・ロビーに戻る（Firebase部屋を抜ける）
+  ・再戦する（同じ部屋でもう1回）
+  z-index:200 で canvas / HUD より必ず前面に来る
 ======================================================== -->
 <div id="winOverlay">
   <div class="win-rays"></div>
   <div class="win-crown">🏆</div>
-  <!-- 勝者キャラクターのアニメーション用キャンバス -->
   <canvas id="winKirbyCanvas" width="160" height="160"></canvas>
   <div class="win-name"  id="winName"></div>
   <div class="win-stats" id="winStats"></div>
-  <button class="btn-lobby" onclick="backToLobby()">ロビーに戻る</button>
+  <!-- ボタン行：再戦 ＋ ロビーへ -->
+  <div style="display:flex;gap:14px;margin-top:4px;flex-wrap:wrap;justify-content:center">
+    <button class="btn-lobby" id="btnRematch" onclick="requestRematch()"
+      style="background:linear-gradient(135deg,#ffe566,#ffb800);color:#7a5000;box-shadow:0 4px 0 #b07800">
+      🔄 再戦する
+    </button>
+    <button class="btn-lobby" onclick="backToLobby()">🏠 ロビーへ</button>
+  </div>
+  <!-- 相手の再戦リクエスト待ち表示 -->
+  <div id="rematchStatus" style="margin-top:10px;font-size:13px;color:#888;min-height:20px"></div>
 </div>
 
 <!-- ========================================================
@@ -993,6 +1005,18 @@ document.addEventListener('firebase-ready', () => {
 });
 
 /* ============================================================
+  AudioContext のアンロック（iOS / Android 対応）
+  ブラウザはユーザー操作前に音を鳴らせない仕様。
+  画面への最初のタップ・クリックで suspended → running に切り替える。
+============================================================ */
+const _sfxCtx = new (window.AudioContext || window.webkitAudioContext)();
+const _unlockAudio = () => {
+  if (_sfxCtx.state === 'suspended') _sfxCtx.resume();
+};
+document.addEventListener('touchstart', _unlockAudio, { once: true });
+document.addEventListener('mousedown',  _unlockAudio, { once: true });
+
+/* ============================================================
   キャラクター選択モーダル
 ============================================================ */
 function buildCharGrid() {
@@ -1046,15 +1070,21 @@ function toggleStamp() {
 
 /* ============================================================
   スタンプ送信
-  Firebase の stamps ノードに書き込み → 全員に同期
+  ─ gameRunning チェックを外し、試合中・試合後どちらでも使える
+  ─ 自分のスタンプはローカルで即座に表示（自分の座標に）
+  ─ Firebase 経由で他プレイヤーにも同期
 ============================================================ */
 function sendStamp(emoji) {
-  if (demoMode) {
-    // デモモードはローカルで表示だけ
-    showStampFloat(emoji, W * .5, H * .4);
-    document.getElementById('stampPanel').classList.remove('open');
-    return;
-  }
+  // 自分の画面ではすぐに表示（座標は自分のキャラ位置、なければ中央）
+  const me = players[myId];
+  const sx = me ? me.x : W * .5;
+  const sy = me ? me.y - 60 : H * .4;
+  showStampFloat(emoji, sx, sy);
+  playSound('stamp'); // 🎯 スタンプSE
+  document.getElementById('stampPanel').classList.remove('open');
+
+  if (demoMode) return; // デモモードはローカル表示だけで終わり
+
   const { ref, push } = F();
   push(ref(db(), `rooms/${roomId}/stamps`), {
     playerId: myId,
@@ -1062,7 +1092,6 @@ function sendStamp(emoji) {
     emoji,
     ts: Date.now(),
   });
-  document.getElementById('stampPanel').classList.remove('open');
 }
 
 /* スタンプを画面上でアニメーション表示 */
@@ -1221,16 +1250,18 @@ function listenRoom() {
   });
 
   // スタンプを監視
+  // ─ 自分が送ったスタンプはローカルで既に表示済みなのでスキップ
+  // ─ 他プレイヤーのスタンプは送信者のキャラ座標に表示
   onValue(ref(db(), `rooms/${roomId}/stamps`), snap => {
-    if (!snap.exists() || !gameRunning) return;
+    if (!snap.exists()) return;
     const stamps = snap.val();
     const latest = Object.values(stamps).sort((a,b)=>b.ts-a.ts)[0];
-    if (latest && Date.now() - latest.ts < 2000) {
-      const p = players[latest.playerId];
-      const x = p ? p.x : W * .5;
-      const y = p ? p.y - 60 : H * .4;
-      showStampFloat(latest.emoji, x, y);
-    }
+    if (!latest || Date.now() - latest.ts >= 3000) return;
+    if (latest.playerId === myId) return; // 自分のは既にローカルで表示済み
+    const p = players[latest.playerId];
+    const x = p ? p.x : W * .5;
+    const y = p ? p.y - 60 : H * .4;
+    showStampFloat(latest.emoji, x, y);
   });
 }
 
@@ -1477,6 +1508,7 @@ function doAttack(tId) {
   myState.state  = 'attack';
   myState.atkCd  = ATK_CD;
   players[myId].state = 'attack';
+  playSound('attack'); // 🗡️ 攻撃SE
 
   if (demoMode) {
     // デモモード：相手プレイヤーはボットなので直接ダメージ
@@ -1605,16 +1637,19 @@ function pressParry() {
 
   if (elapsed < winMin) {
     // 早すぎ
+    playSound('parry_fail');
     showParryBarResult('early');
     floatText(players[myId]?.x - 30, players[myId]?.y - 60, '早すぎ！', '#ff9900');
 
   } else if (elapsed > winMax) {
     // 遅すぎ
+    playSound('parry_fail');
     showParryBarResult('late');
     floatText(players[myId]?.x - 30, players[myId]?.y - 60, '遅すぎ！', '#ff6666');
 
   } else {
     /* ===== 見切り成功！ ===== */
+    playSound('parry'); // ✨ 見切り成功SE
     inc.parried = true;
     myState.parryCount++;
     players[myId].parryCount = myState.parryCount;
@@ -1670,6 +1705,7 @@ function applyDamage(tId, dmg, attackerId) {
     myState.hp = Math.max(0, myState.hp - dmg);
     players[myId].hp    = myState.hp;
     players[myId].state = 'hurt';
+    playSound('damage'); // 💥 被ダメSE
     setTimeout(() => { if (players[myId]?.state === 'hurt') players[myId].state = 'idle'; }, 400);
 
     if (!demoMode) {
@@ -1732,6 +1768,11 @@ function showWin(winner) {
   // 2. オーバーレイ表示
   const ov = document.getElementById('winOverlay');
   ov.classList.add('visible');
+  playSound('win'); // 🏆 勝利SE
+
+  // gameScreen の pointer-events を切る
+  // → canvas や HUD が winOverlay のボタンクリックを横取りしなくなる
+  document.getElementById('gameScreen').style.pointerEvents = 'none';
 
   // 3. 紙吹雪
   launchConfetti();
@@ -2037,14 +2078,256 @@ function backToLobby() {
   clearInterval(window._winAnim);
   document.getElementById('winOverlay').classList.remove('visible');
   document.getElementById('gameScreen').classList.remove('active');
+  document.getElementById('gameScreen').style.pointerEvents = '';
   document.getElementById('mobileCtrl').classList.remove('visible');
   document.getElementById('stampToggle').classList.remove('visible');
   document.getElementById('chatToggle').classList.remove('visible');
   document.getElementById('chatWrap').classList.remove('visible');
+  document.getElementById('rematchStatus').textContent = '';
   gameRunning = false; gameOver = false;
   particles = []; warnEls = {};
   players   = {};
+  if (!demoMode && roomId) {
+    const { ref, remove } = F();
+    remove(ref(db(), `rooms/${roomId}/rematch`));
+  }
   document.getElementById('lobbyScreen').classList.add('active');
+}
+
+/* ============================================================
+  再戦リクエスト
+  ─ デモモード: ボタンを押したら即リセットして再スタート
+  ─ オンライン: Firebase の rematch フラグを書き込み、
+    両者が書き込んだら自動的にゲームリセット＆再開
+============================================================ */
+function requestRematch() {
+  const btn = document.getElementById('btnRematch');
+  btn.disabled = true;
+  btn.textContent = '⏳ 待機中…';
+
+  if (demoMode) {
+    // デモモードは即リセット
+    clearInterval(window._winAnim);
+    document.getElementById('winOverlay').classList.remove('visible');
+    document.getElementById('gameScreen').style.pointerEvents = '';
+    gameRunning = false; gameOver = false;
+    particles = []; warnEls = {};
+    // players は維持してそのまま再スタート
+    Object.values(players).forEach(p => {
+      p.hp    = MAX_HP;
+      p.state = 'idle';
+      p.alive = true;
+      p.atkCd = 0; p.parryCd = 0;
+      p.parryCount = 0;
+    });
+    myState = {
+      hp: MAX_HP, state: 'idle',
+      atkCd: 0, parryCd: 0,
+      parryCount: 0, incomingAtk: null,
+      shieldActive: false, shieldUsed: false,
+      charId: myCharId,
+    };
+    rebuildHUD();
+    doCountdown(() => {
+      gameRunning = true;
+      startBots();
+      playSound('start');
+    });
+    return;
+  }
+
+  // オンライン: Firebase に自分の再戦フラグを書き込む
+  const { ref, set, onValue } = F();
+  set(ref(db(), `rooms/${roomId}/rematch/${myId}`), true);
+  document.getElementById('rematchStatus').textContent = '🔄 相手の返答を待っています…';
+
+  // 両者のフラグを監視
+  onValue(ref(db(), `rooms/${roomId}/rematch`), snap => {
+    if (!snap.exists()) return;
+    const votes = snap.val();
+    const allVoted = Object.keys(players).every(id => votes[id]);
+    if (!allVoted) {
+      const count = Object.keys(votes).length;
+      document.getElementById('rematchStatus').textContent = `🔄 ${count}/${Object.keys(players).length} 人が再戦希望`;
+      return;
+    }
+    // 全員一致 → リセットして再スタート
+    clearInterval(window._winAnim);
+    document.getElementById('winOverlay').classList.remove('visible');
+    document.getElementById('gameScreen').style.pointerEvents = '';
+    document.getElementById('rematchStatus').textContent = '';
+    gameRunning = false; gameOver = false;
+    particles = []; warnEls = {};
+
+    // Firebase の rematch フラグをクリア
+    const { remove } = F();
+    remove(ref(db(), `rooms/${roomId}/rematch`));
+
+    // ゲームを再初期化
+    initGame([]);
+    playSound('start');
+  });
+}
+
+/* ============================================================
+  サウンドシステム（Web Audio API）
+
+  外部ファイル不要。すべて音をコードで生成する。
+  playSound(name) を呼ぶだけでSEが鳴る。
+
+  音の種類:
+    'attack'    : 攻撃ボタン（ドスン系）
+    'parry'     : 見切り成功（カキーン！）
+    'parry_fail': 見切り失敗（ブー）
+    'damage'    : ダメージを受けた（ドン）
+    'warn'      : 攻撃警告（ピッ）
+    'win'       : 勝利（ファンファーレ）
+    'start'     : ゲーム開始（ドドドン）
+    'stamp'     : スタンプ送信（ポップ）
+============================================================ */
+function playSound(name) {
+  try {
+    if (_sfxCtx.state === 'suspended') _sfxCtx.resume();
+
+    const ctx = _sfxCtx;
+    const now = ctx.currentTime;
+
+    switch (name) {
+      case 'warn': {
+        // ピッ（高めの短い警告音）
+        const o = ctx.createOscillator();
+        const g = ctx.createGain();
+        o.connect(g); g.connect(ctx.destination);
+        o.frequency.setValueAtTime(880, now);
+        o.frequency.exponentialRampToValueAtTime(660, now + 0.12);
+        g.gain.setValueAtTime(0.3, now);
+        g.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+        o.start(now); o.stop(now + 0.18);
+        break;
+      }
+      case 'attack': {
+        // ドスン（低いインパクト音）
+        const buf = ctx.createBuffer(1, ctx.sampleRate * 0.15, ctx.sampleRate);
+        const data = buf.getChannelData(0);
+        for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / data.length, 3);
+        const src = ctx.createBufferSource();
+        const g = ctx.createGain();
+        src.buffer = buf; src.connect(g); g.connect(ctx.destination);
+        g.gain.setValueAtTime(0.6, now);
+        g.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+        src.start(now);
+
+        // 低周波で「ドン」感を追加
+        const o = ctx.createOscillator();
+        const g2 = ctx.createGain();
+        o.connect(g2); g2.connect(ctx.destination);
+        o.type = 'sine';
+        o.frequency.setValueAtTime(120, now);
+        o.frequency.exponentialRampToValueAtTime(40, now + 0.1);
+        g2.gain.setValueAtTime(0.4, now);
+        g2.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+        o.start(now); o.stop(now + 0.12);
+        break;
+      }
+      case 'parry': {
+        // カキーン！（金属的な高い音 + スパーク感）
+        [880, 1320, 1760].forEach((freq, i) => {
+          const o = ctx.createOscillator();
+          const g = ctx.createGain();
+          o.connect(g); g.connect(ctx.destination);
+          o.type = 'triangle';
+          o.frequency.setValueAtTime(freq, now + i * 0.03);
+          o.frequency.exponentialRampToValueAtTime(freq * 1.5, now + i * 0.03 + 0.05);
+          g.gain.setValueAtTime(0.25, now + i * 0.03);
+          g.gain.exponentialRampToValueAtTime(0.001, now + i * 0.03 + 0.35);
+          o.start(now + i * 0.03);
+          o.stop(now + i * 0.03 + 0.35);
+        });
+        break;
+      }
+      case 'parry_fail': {
+        // ブー（低い失敗音）
+        const o = ctx.createOscillator();
+        const g = ctx.createGain();
+        o.connect(g); g.connect(ctx.destination);
+        o.type = 'sawtooth';
+        o.frequency.setValueAtTime(200, now);
+        o.frequency.exponentialRampToValueAtTime(80, now + 0.25);
+        g.gain.setValueAtTime(0.25, now);
+        g.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+        o.start(now); o.stop(now + 0.25);
+        break;
+      }
+      case 'damage': {
+        // ダメージ（ドン＋ノイズ）
+        const buf = ctx.createBuffer(1, ctx.sampleRate * 0.1, ctx.sampleRate);
+        const data = buf.getChannelData(0);
+        for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / data.length, 2);
+        const src = ctx.createBufferSource();
+        const g = ctx.createGain();
+        src.buffer = buf; src.connect(g); g.connect(ctx.destination);
+        g.gain.setValueAtTime(0.5, now);
+        src.start(now);
+
+        const o = ctx.createOscillator();
+        const g2 = ctx.createGain();
+        o.connect(g2); g2.connect(ctx.destination);
+        o.frequency.setValueAtTime(300, now);
+        o.frequency.exponentialRampToValueAtTime(80, now + 0.15);
+        g2.gain.setValueAtTime(0.3, now);
+        g2.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+        o.start(now); o.stop(now + 0.15);
+        break;
+      }
+      case 'start': {
+        // ドドドン（3連打のファンファーレ）
+        const freqs = [220, 330, 440];
+        freqs.forEach((f, i) => {
+          const o = ctx.createOscillator();
+          const g = ctx.createGain();
+          o.connect(g); g.connect(ctx.destination);
+          o.type = 'square';
+          o.frequency.setValueAtTime(f, now + i * 0.12);
+          g.gain.setValueAtTime(0.0, now + i * 0.12);
+          g.gain.linearRampToValueAtTime(0.2, now + i * 0.12 + 0.02);
+          g.gain.exponentialRampToValueAtTime(0.001, now + i * 0.12 + 0.18);
+          o.start(now + i * 0.12);
+          o.stop(now + i * 0.12 + 0.2);
+        });
+        break;
+      }
+      case 'win': {
+        // 勝利ファンファーレ（明るい上昇音）
+        const melody = [523, 659, 784, 1047];
+        melody.forEach((f, i) => {
+          const o = ctx.createOscillator();
+          const g = ctx.createGain();
+          o.connect(g); g.connect(ctx.destination);
+          o.type = 'triangle';
+          o.frequency.setValueAtTime(f, now + i * 0.14);
+          g.gain.setValueAtTime(0.0, now + i * 0.14);
+          g.gain.linearRampToValueAtTime(0.25, now + i * 0.14 + 0.02);
+          g.gain.exponentialRampToValueAtTime(0.001, now + i * 0.14 + 0.4);
+          o.start(now + i * 0.14);
+          o.stop(now + i * 0.14 + 0.42);
+        });
+        break;
+      }
+      case 'stamp': {
+        // ポップ（スタンプ送信の軽い音）
+        const o = ctx.createOscillator();
+        const g = ctx.createGain();
+        o.connect(g); g.connect(ctx.destination);
+        o.type = 'sine';
+        o.frequency.setValueAtTime(600, now);
+        o.frequency.exponentialRampToValueAtTime(900, now + 0.08);
+        g.gain.setValueAtTime(0.2, now);
+        g.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+        o.start(now); o.stop(now + 0.12);
+        break;
+      }
+    }
+  } catch(e) { /* 音声未対応環境は無視 */ }
 }
 
 /* ============================================================
@@ -2241,6 +2524,7 @@ function getParryWindow() {
   相手から攻撃が来たとき頭上に「⚠️ 見切れ！」を表示
 ============================================================ */
 function showWarn(attackerId) {
+  playSound('warn'); // ⚠️ 警告SE
   clearWarn(attackerId);
   const target = players[myId];
   if (!target) return;
@@ -2303,8 +2587,9 @@ function doCountdown(cb) {
     d.textContent = n > 0 ? n : 'ファイト！';
     d.style.color  = n > 0 ? 'white' : '#ffaa00';
     ov.appendChild(d);
-    if (n > 0) { n--; setTimeout(tick, 800); }
-    else setTimeout(() => { ov.remove(); cb(); }, 700);
+    // カウントダウンの各数字でビープ音
+    if (n > 0) { playSound('warn'); n--; setTimeout(tick, 800); }
+    else { playSound('start'); setTimeout(() => { ov.remove(); cb(); }, 700); }
   };
   tick();
 }
