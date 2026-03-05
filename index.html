@@ -17,7 +17,7 @@
     from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
   // ▼▼▼ ここにFirebaseの設定を貼り替えてください ▼▼▼
-const firebaseConfig = {
+  const firebaseConfig = {
     apiKey: "AIzaSyCigiPbiTWq6ggIOc5cDhRT1wHp-u1vcMg",
     authDomain: "mikiri-on-line.firebaseapp.com",
     databaseURL: "https://mikiri-on-line-default-rtdb.firebaseio.com",
@@ -1219,6 +1219,7 @@ function listenRoom() {
         }
       });
       rebuildHUD();
+      checkWin(); // ← 相手のalive更新後に勝利判定を走らせる
     }
   });
 
@@ -1735,11 +1736,12 @@ function applyDamage(tId, dmg, attackerId) {
 
 /* ============================================================
   勝利チェック
-  生存者が1人以下になったらゲーム終了。
-  900ms 待ってから showWin を呼ぶ（最後のヒットエフェクトが
-  見えてから画面が切り替わるようにする）。
+  ─ gameRunning チェックは外す。Firebase同期後にも呼ばれるため
+    gameOver フラグだけで二重発火を防ぐ。
+  ─ 生存者が1人以下になった瞬間にゲーム終了処理を開始
 ============================================================ */
 function checkWin() {
+  if (gameOver) return; // 既に終了済みなら何もしない
   const alive = Object.values(players).filter(p => p.alive);
   if (alive.length <= 1) {
     gameOver    = true;
