@@ -1,0 +1,1058 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>ミキリショップ</title>
+<style>
+/* ============================================================
+  Google Fonts
+============================================================ */
+@import url('https://fonts.googleapis.com/css2?family=Fredoka+One&family=Noto+Sans+JP:wght@700;900&display=swap');
+
+/* ============================================================
+  CSS変数
+============================================================ */
+:root {
+  --gold:   #ffd700;
+  --gold2:  #ffaa00;
+  --pink:   #ff6eb4;
+  --dark:   #1a1a2e;
+  --card:   #16213e;
+  --card2:  #0f3460;
+  --rare:   #c084fc;
+  --epic:   #f59e0b;
+  --legend: #ff3366;
+  --text:   #e8e8f0;
+  --muted:  #8888aa;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: 'Fredoka One', 'Noto Sans JP', cursive;
+  background: linear-gradient(135deg, var(--dark) 0%, #0d1b3e 50%, #1a0a2e 100%);
+  min-height: 100vh;
+  color: var(--text);
+  overflow-x: hidden;
+}
+
+/* ============================================================
+  ヘッダー
+  ショップ名 + コイン残高 + 戻るボタン
+============================================================ */
+.shop-header {
+  position: sticky; top: 0; z-index: 50;
+  background: rgba(26,26,46,.95);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(255,215,0,.2);
+  padding: 12px 20px;
+  display: flex; align-items: center; gap: 14px;
+}
+.shop-logo {
+  font-size: 24px; color: var(--gold);
+  text-shadow: 0 0 20px rgba(255,215,0,.5);
+  flex: 1;
+}
+.coin-display {
+  display: flex; align-items: center; gap: 6px;
+  background: rgba(255,215,0,.1);
+  border: 1px solid rgba(255,215,0,.3);
+  border-radius: 20px; padding: 6px 14px;
+}
+.coin-icon  { font-size: 18px; }
+.coin-count { font-size: 18px; color: var(--gold); }
+.btn-back {
+  font-family: 'Fredoka One', cursive;
+  font-size: 14px; padding: 8px 16px;
+  background: rgba(255,255,255,.1);
+  border: 1px solid rgba(255,255,255,.2);
+  color: white; border-radius: 14px; cursor: pointer;
+  transition: all .15s;
+  text-decoration: none; display: inline-block;
+}
+.btn-back:hover { background: rgba(255,255,255,.2); }
+
+/* ============================================================
+  タブナビゲーション
+  ショップ / スキン一覧 / ガチャ / コイン購入
+============================================================ */
+.tab-bar {
+  display: flex; overflow-x: auto;
+  gap: 4px; padding: 12px 16px;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+  scrollbar-width: none;
+}
+.tab-bar::-webkit-scrollbar { display: none; }
+.tab-btn {
+  font-family: 'Fredoka One', cursive;
+  font-size: 14px; padding: 8px 20px;
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.1);
+  color: var(--muted); border-radius: 20px; cursor: pointer;
+  white-space: nowrap; transition: all .15s;
+}
+.tab-btn.active {
+  background: linear-gradient(135deg, var(--pink), #d94090);
+  border-color: var(--pink); color: white;
+}
+
+/* ============================================================
+  コンテンツエリア
+============================================================ */
+.content { padding: 20px 16px; max-width: 600px; margin: 0 auto; }
+
+/* タブパネルの表示切り替え */
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+
+/* ============================================================
+  注目アイテムバナー（ショップタブのトップ）
+============================================================ */
+.featured-banner {
+  background: linear-gradient(135deg, #1a0a2e, #2a1050);
+  border: 1px solid rgba(192,132,252,.4);
+  border-radius: 20px; padding: 20px;
+  margin-bottom: 20px; position: relative; overflow: hidden;
+  text-align: center;
+}
+.featured-banner::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: radial-gradient(ellipse at 50% 0%, rgba(192,132,252,.2) 0%, transparent 70%);
+  pointer-events: none;
+}
+.featured-label {
+  font-size: 11px; color: var(--rare); letter-spacing: 2px;
+  margin-bottom: 8px; text-transform: uppercase;
+}
+.featured-name  { font-size: 26px; color: white; margin-bottom: 4px; }
+.featured-icons { font-size: 48px; margin: 10px 0; }
+.featured-desc  { font-size: 13px; color: var(--muted); margin-bottom: 16px; }
+
+/* ============================================================
+  セクションヘッダー
+============================================================ */
+.section-title {
+  font-size: 18px; color: var(--gold);
+  margin-bottom: 14px; display: flex; align-items: center; gap: 8px;
+}
+.section-title::after {
+  content: '';
+  flex: 1; height: 1px;
+  background: linear-gradient(90deg, rgba(255,215,0,.3), transparent);
+}
+
+/* ============================================================
+  アイテムグリッド（スキン一覧など）
+============================================================ */
+.item-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 12px; margin-bottom: 24px;
+}
+.item-card {
+  background: var(--card);
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 16px; padding: 14px 10px;
+  text-align: center; cursor: pointer;
+  transition: all .2s; position: relative;
+}
+.item-card:hover     { transform: translateY(-3px); border-color: rgba(255,215,0,.3); }
+.item-card.owned     { border-color: rgba(0,255,136,.4); }
+.item-card.equipped  { border-color: var(--gold); background: rgba(255,215,0,.07); }
+.item-card.locked    { opacity: .6; }
+
+/* レアリティバッジ */
+.rarity-badge {
+  position: absolute; top: 8px; right: 8px;
+  font-size: 10px; padding: 2px 8px;
+  border-radius: 10px; font-weight: bold;
+}
+.rarity-badge.common  { background: rgba(120,120,120,.4); color: #aaa; }
+.rarity-badge.rare    { background: rgba(192,132,252,.3); color: var(--rare); }
+.rarity-badge.epic    { background: rgba(245,158,11,.3);  color: var(--epic); }
+.rarity-badge.legend  { background: rgba(255,51,102,.3);  color: var(--legend); }
+
+.item-icon  { font-size: 40px; margin-bottom: 8px; display: block; }
+.item-name  { font-size: 13px; color: var(--text); margin-bottom: 4px; }
+.item-price { font-size: 12px; color: var(--gold); }
+.item-price.owned    { color: #00ff88; }
+.item-price.equipped { color: var(--gold); }
+
+/* 購入ボタン */
+.btn-buy {
+  font-family: 'Fredoka One', cursive;
+  font-size: 12px; padding: 6px 14px;
+  background: linear-gradient(135deg, var(--gold), var(--gold2));
+  color: #5a3000; border: none; border-radius: 12px;
+  cursor: pointer; margin-top: 6px;
+  box-shadow: 0 2px 0 #886600;
+  transition: all .1s; display: inline-block;
+}
+.btn-buy:active { transform: translateY(2px); box-shadow: 0 0 0; }
+.btn-equip {
+  font-family: 'Fredoka One', cursive;
+  font-size: 12px; padding: 6px 14px;
+  background: linear-gradient(135deg, #00ff88, #00cc66);
+  color: #003320; border: none; border-radius: 12px;
+  cursor: pointer; margin-top: 6px;
+  box-shadow: 0 2px 0 #006633;
+  display: inline-block;
+}
+
+/* ============================================================
+  ガチャ画面
+============================================================ */
+.gacha-machine {
+  background: linear-gradient(135deg, #1a0535, #2d0855);
+  border: 2px solid var(--rare);
+  border-radius: 24px; padding: 24px;
+  text-align: center; margin-bottom: 20px;
+  box-shadow: 0 0 40px rgba(192,132,252,.3);
+  position: relative; overflow: hidden;
+}
+.gacha-title { font-size: 22px; color: var(--rare); margin-bottom: 4px; }
+.gacha-sub   { font-size: 12px; color: var(--muted); margin-bottom: 20px; }
+
+/* ガチャの表示ボックス */
+.gacha-box {
+  width: 130px; height: 130px;
+  background: linear-gradient(135deg, #2d0855, #1a0535);
+  border: 3px solid var(--rare);
+  border-radius: 20px; margin: 0 auto 20px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 60px;
+  box-shadow: inset 0 0 30px rgba(192,132,252,.2), 0 0 30px rgba(192,132,252,.3);
+  transition: all .3s;
+  cursor: pointer;
+}
+.gacha-box.spinning {
+  animation: gacha-spin .15s ease-in-out infinite alternate;
+}
+@keyframes gacha-spin {
+  from { transform: scale(.95) rotate(-3deg); }
+  to   { transform: scale(1.05) rotate(3deg); }
+}
+
+.gacha-odds {
+  background: rgba(255,255,255,.05);
+  border-radius: 12px; padding: 10px 16px;
+  font-size: 12px; color: var(--muted);
+  text-align: left; margin-bottom: 14px;
+}
+.gacha-odds-row { display: flex; justify-content: space-between; padding: 2px 0; }
+.gacha-odds-row span { font-weight: bold; }
+.odds-common { color: #aaa;         }
+.odds-rare   { color: var(--rare);  }
+.odds-epic   { color: var(--epic);  }
+.odds-legend { color: var(--legend);}
+
+/* ガチャボタン */
+.gacha-btns { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+.btn-gacha1 {
+  font-family: 'Fredoka One', cursive;
+  font-size: 16px; padding: 12px 24px;
+  background: linear-gradient(135deg, var(--rare), #7c3aed);
+  color: white; border: none; border-radius: 50px; cursor: pointer;
+  box-shadow: 0 4px 0 #5a0090;
+  transition: all .1s;
+}
+.btn-gacha1:active { transform: translateY(3px); box-shadow: 0 1px 0 #5a0090; }
+.btn-gacha10 {
+  font-family: 'Fredoka One', cursive;
+  font-size: 16px; padding: 12px 24px;
+  background: linear-gradient(135deg, var(--legend), #cc0040);
+  color: white; border: none; border-radius: 50px; cursor: pointer;
+  box-shadow: 0 4px 0 #880030;
+  transition: all .1s;
+}
+.btn-gacha10:active { transform: translateY(3px); box-shadow: 0 1px 0 #880030; }
+
+/* ガチャ結果モーダル */
+.gacha-result-overlay {
+  display: none;
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,.85);
+  z-index: 200;
+  align-items: center; justify-content: center;
+}
+.gacha-result-overlay.open { display: flex; }
+.gacha-result-box {
+  background: var(--card); border-radius: 24px;
+  padding: 28px; max-width: 400px; width: 90vw;
+  text-align: center;
+  border: 2px solid var(--rare);
+  box-shadow: 0 0 60px rgba(192,132,252,.4);
+  animation: result-appear .4s cubic-bezier(.34,1.56,.64,1);
+}
+@keyframes result-appear {
+  from { transform: scale(.5) rotate(-10deg); opacity: 0; }
+  to   { transform: scale(1) rotate(0); opacity: 1; }
+}
+.gacha-result-items {
+  display: flex; flex-wrap: wrap; gap: 10px;
+  justify-content: center; margin: 16px 0;
+}
+.gacha-result-item {
+  background: rgba(255,255,255,.05);
+  border-radius: 16px; padding: 12px 14px;
+  min-width: 80px; text-align: center;
+  border: 1px solid rgba(255,255,255,.1);
+}
+.gacha-result-item.legend { border-color: var(--legend); background: rgba(255,51,102,.1); }
+.gacha-result-item.epic   { border-color: var(--epic);   background: rgba(245,158,11,.1); }
+.gacha-result-item.rare   { border-color: var(--rare);   background: rgba(192,132,252,.1); }
+.gri-icon    { font-size: 32px; }
+.gri-name    { font-size: 11px; color: var(--text); margin-top: 4px; }
+.gri-rarity  { font-size: 10px; margin-top: 2px; }
+.btn-close-result {
+  font-family: 'Fredoka One', cursive;
+  font-size: 18px; padding: 12px 40px;
+  background: linear-gradient(135deg, var(--pink), #d94090);
+  color: white; border: none; border-radius: 50px;
+  cursor: pointer; box-shadow: 0 4px 0 #a02060;
+  transition: all .1s; margin-top: 8px;
+}
+.btn-close-result:active { transform: translateY(3px); }
+
+/* ============================================================
+  コイン購入タブ（たかじぇむ）
+============================================================ */
+.coin-pack-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 12px; margin-bottom: 24px;
+}
+.coin-pack {
+  background: var(--card);
+  border: 1px solid rgba(255,215,0,.2);
+  border-radius: 18px; padding: 16px;
+  text-align: center; cursor: pointer;
+  transition: all .2s; position: relative;
+}
+.coin-pack:hover   { border-color: var(--gold); transform: translateY(-3px); }
+.coin-pack.popular { border-color: var(--epic); box-shadow: 0 0 20px rgba(245,158,11,.3); }
+.pack-badge {
+  position: absolute; top: -8px; left: 50%; transform: translateX(-50%);
+  background: var(--epic); color: white; font-size: 10px;
+  padding: 2px 10px; border-radius: 10px;
+}
+.pack-coin  { font-size: 36px; margin-bottom: 8px; }
+.pack-amt   { font-size: 22px; color: var(--gold); }
+.pack-bonus { font-size: 11px; color: #00ff88; margin: 2px 0; }
+.pack-price {
+  font-size: 14px; color: var(--text); margin-top: 8px;
+  background: rgba(255,255,255,.08); border-radius: 10px; padding: 4px 8px;
+  display: inline-block;
+}
+
+/* 無料コインセクション */
+.free-coin-section {
+  background: linear-gradient(135deg, rgba(0,255,136,.1), rgba(0,200,100,.05));
+  border: 1px solid rgba(0,255,136,.3);
+  border-radius: 16px; padding: 16px; margin-bottom: 24px;
+}
+.free-coin-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,.06);
+}
+.free-coin-row:last-child { border-bottom: none; }
+.fcr-icon { font-size: 28px; flex-shrink: 0; }
+.fcr-info { flex: 1; }
+.fcr-title { font-size: 14px; }
+.fcr-desc  { font-size: 11px; color: var(--muted); }
+.btn-free {
+  font-family: 'Fredoka One', cursive;
+  font-size: 13px; padding: 8px 16px;
+  background: linear-gradient(135deg, #00ff88, #00cc66);
+  color: #003320; border: none; border-radius: 14px; cursor: pointer;
+  box-shadow: 0 3px 0 #006633; flex-shrink: 0;
+  transition: all .1s;
+}
+.btn-free:active   { transform: translateY(2px); }
+.btn-free.claimed  { background: rgba(255,255,255,.1); color: var(--muted); cursor: default; box-shadow: none; }
+
+/* ============================================================
+  事前登録ガチャ
+============================================================ */
+.prereg-banner {
+  background: linear-gradient(135deg, #0a1a0a, #0a2a1a);
+  border: 2px solid #00ff88;
+  border-radius: 20px; padding: 20px;
+  text-align: center; margin-bottom: 20px;
+  box-shadow: 0 0 30px rgba(0,255,136,.2);
+}
+.prereg-title { font-size: 22px; color: #00ff88; margin-bottom: 4px; }
+.prereg-sub   { font-size: 12px; color: var(--muted); margin-bottom: 16px; }
+.prereg-reward {
+  background: rgba(0,255,136,.1); border-radius: 12px;
+  padding: 12px; margin-bottom: 16px;
+  font-size: 13px; color: #00ff88;
+}
+.btn-prereg {
+  font-family: 'Fredoka One', cursive;
+  font-size: 18px; padding: 12px 40px;
+  background: linear-gradient(135deg, #00ff88, #00cc66);
+  color: #003320; border: none; border-radius: 50px;
+  cursor: pointer; box-shadow: 0 4px 0 #006633;
+  transition: all .1s;
+}
+.btn-prereg:active    { transform: translateY(3px); }
+.btn-prereg.registered { background: rgba(255,255,255,.1); color: var(--muted); cursor: default; box-shadow: none; }
+.prereg-count { font-size: 13px; color: var(--muted); margin-top: 10px; }
+
+/* ============================================================
+  トースト通知
+  購入・ガチャ後などに画面上部に一瞬表示
+============================================================ */
+.toast {
+  position: fixed; top: 80px; left: 50%;
+  transform: translateX(-50%);
+  background: rgba(255,255,255,.95);
+  border-radius: 20px; padding: 10px 24px;
+  font-size: 14px; color: #333;
+  box-shadow: 0 4px 20px rgba(0,0,0,.3);
+  z-index: 300; pointer-events: none;
+  animation: toast-in .3s cubic-bezier(.34,1.56,.64,1), toast-out .3s 1.8s ease-in forwards;
+  white-space: nowrap;
+}
+@keyframes toast-in  { from { transform: translateX(-50%) translateY(-20px); opacity: 0; } to { transform: translateX(-50%) translateY(0); opacity: 1; } }
+@keyframes toast-out { from { opacity: 1; } to { opacity: 0; } }
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+  ヘッダー
+============================================================ -->
+<div class="shop-header">
+  <div class="shop-logo">🏪 ミキリショップ</div>
+  <div class="coin-display">
+    <span class="coin-icon">🪙</span>
+    <span class="coin-count" id="coinCount">0</span>
+  </div>
+  <a class="btn-back" href="mikiri-game.html">← ゲームへ</a>
+</div>
+
+<!-- ============================================================
+  タブバー
+============================================================ -->
+<div class="tab-bar">
+  <button class="tab-btn active" onclick="switchTab('shop')">🏪 ショップ</button>
+  <button class="tab-btn"        onclick="switchTab('skins')">🎨 スキン</button>
+  <button class="tab-btn"        onclick="switchTab('gacha')">🎰 ガチャ</button>
+  <button class="tab-btn"        onclick="switchTab('coins')">🪙 たかじぇむ</button>
+  <button class="tab-btn"        onclick="switchTab('prereg')">🎁 事前登録</button>
+</div>
+
+<!-- ============================================================
+  コンテンツエリア
+============================================================ -->
+<div class="content">
+
+  <!-- ショップタブ -->
+  <div class="tab-panel active" id="tab-shop">
+    <div class="featured-banner">
+      <div class="featured-label">✨ 今週の注目アイテム</div>
+      <div class="featured-icons">🔮⭐💫</div>
+      <div class="featured-name">魔術師スキンパック</div>
+      <div class="featured-desc">魔術師3種 + 専用勝利エモート付き！期間限定</div>
+      <button class="btn-buy" onclick="buyFeatured()">🪙 800 で購入</button>
+    </div>
+
+    <div class="section-title">🔥 おすすめ</div>
+    <div class="item-grid" id="shopGrid"></div>
+
+    <div class="section-title">🆕 新着</div>
+    <div class="item-grid" id="newGrid"></div>
+  </div>
+
+  <!-- スキンタブ -->
+  <div class="tab-panel" id="tab-skins">
+    <div class="section-title">🩷 所持スキン</div>
+    <div class="item-grid" id="ownedSkinsGrid"></div>
+    <div class="section-title" style="margin-top:24px">🔒 未入手スキン</div>
+    <div class="item-grid" id="lockedSkinsGrid"></div>
+  </div>
+
+  <!-- ガチャタブ -->
+  <div class="tab-panel" id="tab-gacha">
+    <div class="gacha-machine">
+      <div class="gacha-title">🎰 ガチャマシン</div>
+      <div class="gacha-sub">スキン・エモート・コインが当たる！</div>
+      <div class="gacha-box" id="gachaBox" onclick="doGacha(1)">🎁</div>
+
+      <div class="gacha-odds">
+        <div class="gacha-odds-row">コモン   <span class="odds-common">60%</span></div>
+        <div class="gacha-odds-row">レア     <span class="odds-rare">25%</span></div>
+        <div class="gacha-odds-row">エピック  <span class="odds-epic">12%</span></div>
+        <div class="gacha-odds-row">レジェンド <span class="odds-legend">3%</span></div>
+      </div>
+
+      <div class="gacha-btns">
+        <button class="btn-gacha1"  onclick="doGacha(1)">🪙 150 で1回</button>
+        <button class="btn-gacha10" onclick="doGacha(10)">🪙 1,350 で10回<br><small>(50コインお得！)</small></button>
+      </div>
+    </div>
+
+    <!-- 事前登録ガチャ（1回無料） -->
+    <div class="prereg-banner">
+      <div class="prereg-title">🎁 事前登録特典ガチャ</div>
+      <div class="prereg-sub">事前登録者は1回無料！確定レア以上</div>
+      <div class="prereg-reward">
+        ✅ レア以上が確定！<br>
+        ✅ 限定スキン「サンライズカービィ」が当たるチャンス！
+      </div>
+      <button class="btn-prereg" id="btnPreregGacha" onclick="doPreregGacha()">🎁 無料ガチャを引く</button>
+    </div>
+  </div>
+
+  <!-- たかじぇむ（コイン購入）タブ -->
+  <div class="tab-panel" id="tab-coins">
+    <div class="section-title">🪙 たかじぇむを購入</div>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:16px">
+      ※ たかじぇむはゲーム内仮想通貨です（仮実装）。実際の決済は行いません。
+    </p>
+
+    <div class="coin-pack-grid" id="coinPackGrid"></div>
+
+    <!-- 無料コイン入手方法 -->
+    <div class="section-title">🆓 無料でゲット</div>
+    <div class="free-coin-section">
+      <div class="free-coin-row">
+        <span class="fcr-icon">📅</span>
+        <div class="fcr-info">
+          <div class="fcr-title">デイリーボーナス</div>
+          <div class="fcr-desc">毎日ログインで50コイン</div>
+        </div>
+        <button class="btn-free" id="btnDaily" onclick="claimDaily()">受け取る</button>
+      </div>
+      <div class="free-coin-row">
+        <span class="fcr-icon">🏆</span>
+        <div class="fcr-info">
+          <div class="fcr-title">勝利ボーナス</div>
+          <div class="fcr-desc">勝つたびに30コイン</div>
+        </div>
+        <button class="btn-free claimed">自動付与</button>
+      </div>
+      <div class="free-coin-row">
+        <span class="fcr-icon">⭐</span>
+        <div class="fcr-info">
+          <div class="fcr-title">見切り達成</div>
+          <div class="fcr-desc">見切り5回成功で20コイン</div>
+        </div>
+        <button class="btn-free claimed">自動付与</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 事前登録タブ -->
+  <div class="tab-panel" id="tab-prereg">
+    <div class="prereg-banner">
+      <div class="prereg-title">🚀 ggr 確定事前登録</div>
+      <div class="prereg-sub">登録者が100人を超えたら特別報酬を全員に配布！</div>
+
+      <div class="prereg-reward">
+        <div style="margin-bottom:8px">🎁 登録特典（今すぐ）</div>
+        ✅ 無料ガチャチケット × 1<br>
+        ✅ コイン × 200<br>
+        ✅ 限定称号「初期メンバー」
+      </div>
+
+      <div class="prereg-reward" style="border-color:rgba(255,215,0,.3); background:rgba(255,215,0,.05)">
+        <div style="margin-bottom:8px">👑 100人達成ボーナス（全員に追加配布）</div>
+        🌟 レジェンドスキン確定ガチャチケット × 1<br>
+        🪙 コイン × 500
+      </div>
+
+      <button class="btn-prereg" id="btnPreregMain" onclick="registerPrereg()">✅ 事前登録する（無料）</button>
+      <div class="prereg-count" id="preregCount">現在の登録者数: 読み込み中...</div>
+    </div>
+
+    <!-- 事前登録者一覧（最新10件） -->
+    <div class="section-title">👥 最近の登録者</div>
+    <div id="preregList" style="font-size:13px;color:var(--muted);line-height:2"></div>
+  </div>
+
+</div><!-- /content -->
+
+<!-- ガチャ結果モーダル -->
+<div class="gacha-result-overlay" id="gachaResultOverlay">
+  <div class="gacha-result-box">
+    <div style="font-size:22px;color:var(--rare);margin-bottom:8px">🎊 ガチャ結果！</div>
+    <div class="gacha-result-items" id="gachaResultItems"></div>
+    <button class="btn-close-result" onclick="closeGachaResult()">OK！</button>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+  スキン・エモートのマスターデータ
+  rarity: common / rare / epic / legend
+  type:   skin / emote / coin
+============================================================ */
+const ALL_ITEMS = [
+  // スキン
+  { id: 'default',    name: 'ノーマル',       icon: '🩷', type: 'skin',  rarity: 'common', price: 0,    desc: 'デフォルトスキン' },
+  { id: 'star',       name: 'スタースキン',   icon: '⭐', type: 'skin',  rarity: 'rare',   price: 300,  desc: '星をまとった姿' },
+  { id: 'ice',        name: 'アイススキン',   icon: '❄️', type: 'skin',  rarity: 'rare',   price: 300,  desc: '氷のようにクール' },
+  { id: 'fire',       name: 'ファイヤースキン',icon: '🔥', type: 'skin',  rarity: 'epic',   price: 600,  desc: '炎をまとう戦士' },
+  { id: 'mage',       name: '魔術師スキン',   icon: '🔮', type: 'skin',  rarity: 'epic',   price: 600,  desc: '謎めいた魔術師' },
+  { id: 'galaxy',     name: 'ギャラクシー',   icon: '🌌', type: 'skin',  rarity: 'legend', price: 1200, desc: '宇宙を纏う伝説の姿' },
+  { id: 'sunrise',    name: 'サンライズ',     icon: '🌅', type: 'skin',  rarity: 'legend', price: 1500, desc: '事前登録限定！' },
+
+  // 勝利エモート
+  { id: 'emote_dance',  name: 'ダンス',       icon: '💃', type: 'emote', rarity: 'common', price: 150,  desc: '勝利で踊る！' },
+  { id: 'emote_flex',   name: 'フレックス',   icon: '💪', type: 'emote', rarity: 'rare',   price: 300,  desc: '筋肉を見せびらかす' },
+  { id: 'emote_crown',  name: '王冠のせ',     icon: '👑', type: 'emote', rarity: 'epic',   price: 600,  desc: '王者の証を載せる' },
+  { id: 'emote_firework',name: '花火',        icon: '🎆', type: 'emote', rarity: 'legend', price: 1200, desc: '華やかな花火を打ち上げ' },
+
+  // コイン（ガチャでのみ入手）
+  { id: 'coin_50',  name: 'コイン×50',  icon: '🪙', type: 'coin', rarity: 'common', price: 0, coinAmt: 50  },
+  { id: 'coin_150', name: 'コイン×150', icon: '🪙', type: 'coin', rarity: 'rare',   price: 0, coinAmt: 150 },
+  { id: 'coin_500', name: 'コイン×500', icon: '💰', type: 'coin', rarity: 'epic',   price: 0, coinAmt: 500 },
+];
+
+/* ============================================================
+  コインパックのマスターデータ（たかじぇむ）
+============================================================ */
+const COIN_PACKS = [
+  { id: 'pack1', name: 'スターター',  icon: '🌟', amount: 200,  bonus: '',         price: '¥120',  popular: false },
+  { id: 'pack2', name: 'スモール',    icon: '💫', amount: 500,  bonus: '+50 ボーナス', price: '¥250', popular: false },
+  { id: 'pack3', name: 'ミドル',      icon: '⭐', amount: 1200, bonus: '+200 ボーナス', price: '¥600', popular: true  },
+  { id: 'pack4', name: 'ラージ',      icon: '🌟', amount: 2500, bonus: '+500 ボーナス', price: '¥1200',popular: false },
+  { id: 'pack5', name: 'メガ',        icon: '🏆', amount: 6000, bonus: '+1500 ボーナス',price: '¥2500',popular: false },
+  { id: 'pack6', name: 'アルティメット',icon:'👑', amount:15000, bonus: '+5000 ボーナス',price: '¥5000',popular: false },
+];
+
+/* ============================================================
+  ガチャの排出テーブル
+  乱数 0〜1 に対してレアリティを決定
+============================================================ */
+const GACHA_TABLE = [
+  { rarity: 'legend', weight: 3  },
+  { rarity: 'epic',   weight: 12 },
+  { rarity: 'rare',   weight: 25 },
+  { rarity: 'common', weight: 60 },
+];
+
+/* ============================================================
+  ローカルストレージ キー
+  ブラウザを閉じてもデータが保持される
+============================================================ */
+const LS_COINS       = 'mikiri_coins';
+const LS_OWNED       = 'mikiri_owned';
+const LS_EQUIPPED    = 'mikiri_equipped';
+const LS_DAILY       = 'mikiri_daily';
+const LS_PREREG      = 'mikiri_prereg';
+const LS_PREREG_USED = 'mikiri_prereg_gacha_used';
+
+/* ============================================================
+  状態の読み書きヘルパー
+============================================================ */
+function getCoins() { return parseInt(localStorage.getItem(LS_COINS) || '500'); }
+
+function setCoins(n) {
+  localStorage.setItem(LS_COINS, String(n));
+  document.getElementById('coinCount').textContent = n;
+}
+
+function addCoins(n) { setCoins(getCoins() + n); }
+
+function getOwned()    { return JSON.parse(localStorage.getItem(LS_OWNED)    || '["default","emote_dance"]'); }
+function getEquipped() { return JSON.parse(localStorage.getItem(LS_EQUIPPED) || '{"skin":"default","emote":"emote_dance"}'); }
+
+function setOwned(arr)  { localStorage.setItem(LS_OWNED, JSON.stringify(arr)); }
+function setEquipped(obj){ localStorage.setItem(LS_EQUIPPED, JSON.stringify(obj)); }
+
+function owns(id) { return getOwned().includes(id); }
+
+/* ============================================================
+  ページ初期化
+  ストレージからデータを読み込んで各UIを構築
+============================================================ */
+window.addEventListener('DOMContentLoaded', () => {
+  setCoins(getCoins());      // コイン表示を初期化
+  buildShopGrid();           // ショップグリッド構築
+  buildSkinsGrid();          // スキン一覧構築
+  buildCoinPackGrid();       // コインパック構築
+  checkDailyStatus();        // デイリーボーナスのチェック
+  checkPreregStatus();       // 事前登録状態チェック
+  updatePreregCount();       // 登録者数の表示更新
+});
+
+/* ============================================================
+  タブ切り替え
+============================================================ */
+function switchTab(tab) {
+  // すべてのパネルを非表示
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+
+  // 選択されたタブだけ表示
+  document.getElementById('tab-' + tab).classList.add('active');
+  event.target.classList.add('active');
+}
+
+/* ============================================================
+  ショップグリッドの構築
+============================================================ */
+function buildShopGrid() {
+  const shop = ALL_ITEMS.filter(i => i.type !== 'coin' && !owns(i.id));
+  renderItemGrid(document.getElementById('shopGrid'), shop.slice(0, 6));
+  renderItemGrid(document.getElementById('newGrid'), shop.slice(6));
+}
+
+/* アイテムグリッドの汎用描画関数 */
+function renderItemGrid(container, items) {
+  container.innerHTML = '';
+  items.forEach(item => {
+    const owned = owns(item.id);
+    const eq    = getEquipped();
+    const isEq  = eq[item.type] === item.id;
+
+    const div = document.createElement('div');
+    div.className = 'item-card' + (owned ? ' owned' : '') + (isEq ? ' equipped' : '');
+
+    // レアリティバッジのスタイル
+    const rarMap = { common:'コモン', rare:'レア', epic:'エピック', legend:'レジェンド' };
+
+    div.innerHTML = `
+      <span class="rarity-badge ${item.rarity}">${rarMap[item.rarity]}</span>
+      <span class="item-icon">${item.icon}</span>
+      <div class="item-name">${item.name}</div>
+      ${item.desc ? `<div style="font-size:10px;color:var(--muted);margin-bottom:4px">${item.desc}</div>` : ''}
+      <div class="item-price ${owned ? (isEq ? 'equipped' : 'owned') : ''}">
+        ${owned
+          ? (isEq ? '✅ 装備中' : '✓ 所持済み')
+          : `🪙 ${item.price}`}
+      </div>
+    `;
+
+    // ボタンの追加
+    if (!owned && item.price > 0) {
+      const btn = document.createElement('button');
+      btn.className   = 'btn-buy';
+      btn.textContent = '購入';
+      btn.onclick = () => buyItem(item.id);
+      div.appendChild(btn);
+    } else if (owned && !isEq) {
+      const btn = document.createElement('button');
+      btn.className   = 'btn-equip';
+      btn.textContent = '装備する';
+      btn.onclick = () => equipItem(item.id, item.type);
+      div.appendChild(btn);
+    }
+
+    container.appendChild(div);
+  });
+
+  if (items.length === 0) {
+    container.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:12px">アイテムがありません</div>';
+  }
+}
+
+/* ============================================================
+  スキン一覧グリッドの構築
+============================================================ */
+function buildSkinsGrid() {
+  const owned  = ALL_ITEMS.filter(i => i.type === 'skin'  && owns(i.id));
+  const owned2 = ALL_ITEMS.filter(i => i.type === 'emote' && owns(i.id));
+  const locked = ALL_ITEMS.filter(i => (i.type === 'skin' || i.type === 'emote') && !owns(i.id));
+
+  renderItemGrid(document.getElementById('ownedSkinsGrid'), [...owned, ...owned2]);
+  renderItemGrid(document.getElementById('lockedSkinsGrid'), locked);
+}
+
+/* ============================================================
+  コインパックグリッドの構築
+============================================================ */
+function buildCoinPackGrid() {
+  const grid = document.getElementById('coinPackGrid');
+  grid.innerHTML = '';
+  COIN_PACKS.forEach(pack => {
+    const div = document.createElement('div');
+    div.className = 'coin-pack' + (pack.popular ? ' popular' : '');
+    div.innerHTML = `
+      ${pack.popular ? '<div class="pack-badge">人気No.1</div>' : ''}
+      <div class="pack-coin">${pack.icon}</div>
+      <div class="pack-amt">${pack.amount.toLocaleString()}</div>
+      <div class="pack-bonus">${pack.bonus || '　'}</div>
+      <div class="pack-price">${pack.price}</div>
+    `;
+    div.onclick = () => buyCoins(pack);
+    grid.appendChild(div);
+  });
+}
+
+/* ============================================================
+  アイテム購入処理
+============================================================ */
+function buyItem(itemId) {
+  const item = ALL_ITEMS.find(i => i.id === itemId);
+  if (!item) return;
+  if (getCoins() < item.price) { showToast('💸 コインが足りません！'); return; }
+
+  addCoins(-item.price);
+
+  const owned = getOwned();
+  owned.push(itemId);
+  setOwned(owned);
+
+  showToast(`✅ ${item.icon} ${item.name} を購入しました！`);
+  buildShopGrid();
+  buildSkinsGrid();
+}
+
+/* 注目アイテム（バナー）購入 */
+function buyFeatured() {
+  if (getCoins() < 800) { showToast('💸 コインが足りません！'); return; }
+  addCoins(-800);
+  ['mage','emote_crown'].forEach(id => {
+    if (!owns(id)) { const o = getOwned(); o.push(id); setOwned(o); }
+  });
+  showToast('🎉 魔術師スキンパックを購入しました！');
+  buildShopGrid(); buildSkinsGrid();
+}
+
+/* ============================================================
+  アイテム装備処理
+============================================================ */
+function equipItem(itemId, type) {
+  const eq = getEquipped();
+  eq[type] = itemId;
+  setEquipped(eq);
+  showToast('✅ 装備しました！');
+  buildSkinsGrid();
+}
+
+/* ============================================================
+  コイン購入（仮実装・実際の決済なし）
+============================================================ -->
+*/
+function buyCoins(pack) {
+  // ※ 実際の決済処理はここに実装する
+  addCoins(pack.amount);
+  showToast(`🪙 ${pack.amount.toLocaleString()} たかじぇむを受け取りました！`);
+}
+
+/* ============================================================
+  デイリーボーナス
+  同じ日付なら「受け取り済み」、翌日になったらリセット
+============================================================ -->
+*/
+function checkDailyStatus() {
+  const today    = new Date().toDateString();
+  const lastDate = localStorage.getItem(LS_DAILY);
+  const btn      = document.getElementById('btnDaily');
+  if (lastDate === today) {
+    btn.textContent = '受け取り済み';
+    btn.classList.add('claimed');
+  }
+}
+
+function claimDaily() {
+  const today = new Date().toDateString();
+  const last  = localStorage.getItem(LS_DAILY);
+  if (last === today) { showToast('⏰ 明日また来てね！'); return; }
+
+  localStorage.setItem(LS_DAILY, today);
+  addCoins(50);
+  showToast('🎉 デイリーボーナス！50コインをゲット！');
+
+  const btn = document.getElementById('btnDaily');
+  btn.textContent = '受け取り済み';
+  btn.classList.add('claimed');
+}
+
+/* ============================================================
+  事前登録処理
+  ローカルに登録フラグを保存し、コイン + ガチャチケットを付与
+============================================================ -->
+*/
+function checkPreregStatus() {
+  const registered  = localStorage.getItem(LS_PREREG) === 'true';
+  const gachaUsed   = localStorage.getItem(LS_PREREG_USED) === 'true';
+
+  // メインボタンの状態更新
+  const btnMain = document.getElementById('btnPreregMain');
+  if (registered) {
+    btnMain.textContent = '✅ 登録済み！';
+    btnMain.classList.add('registered');
+  }
+
+  // ガチャボタンの状態更新
+  const btnGacha = document.getElementById('btnPreregGacha');
+  if (!registered) {
+    btnGacha.textContent = '先に事前登録してください';
+    btnGacha.classList.add('registered');
+  } else if (gachaUsed) {
+    btnGacha.textContent = '✅ 使用済み';
+    btnGacha.classList.add('registered');
+  }
+}
+
+function registerPrereg() {
+  const registered = localStorage.getItem(LS_PREREG) === 'true';
+  if (registered) { showToast('すでに登録済みです！'); return; }
+
+  localStorage.setItem(LS_PREREG, 'true');
+  addCoins(200);  // 登録特典コイン付与
+
+  // UI更新
+  const btn = document.getElementById('btnPreregMain');
+  btn.textContent = '✅ 登録済み！';
+  btn.classList.add('registered');
+
+  // ガチャボタンを有効化
+  const btnGacha = document.getElementById('btnPreregGacha');
+  btnGacha.textContent = '🎁 無料ガチャを引く';
+  btnGacha.classList.remove('registered');
+
+  showToast('🎉 事前登録完了！200コインをゲット！');
+  updatePreregCount();
+}
+
+/* 事前登録者数の表示（ローカルではランダム増分で演出） */
+function updatePreregCount() {
+  const base  = parseInt(localStorage.getItem('prereg_count') || '47');
+  const count = base + Math.floor(Math.random() * 3);
+  localStorage.setItem('prereg_count', String(count));
+  document.getElementById('preregCount').textContent = `現在の登録者数: ${count}人 / 目標100人`;
+
+  // 最近の登録者リスト（ダミーデータ）
+  const names = ['たろう', 'はなこ', 'ガメラ太郎', 'ミキリの達人', 'ケンジ', 'あいちゃん',
+                  'NoobSlayer', 'カービィ好き', 'みさき', 'ゆうき'];
+  const list = document.getElementById('preregList');
+  list.innerHTML = names.slice(0, 8).map((n, i) => {
+    const mins = i * 7 + Math.floor(Math.random() * 10);
+    return `<div>🌟 ${n} が登録しました（${mins}分前）</div>`;
+  }).join('');
+}
+
+/* 事前登録ガチャ（確定レア以上・1回のみ） */
+function doPreregGacha() {
+  const registered = localStorage.getItem(LS_PREREG) === 'true';
+  const used       = localStorage.getItem(LS_PREREG_USED) === 'true';
+
+  if (!registered) { showToast('先に事前登録してください！'); return; }
+  if (used)        { showToast('すでに使用済みです！'); return; }
+
+  localStorage.setItem(LS_PREREG_USED, 'true');
+
+  // レア以上確定で1回引く
+  const result = rollGacha(1, true);
+  showGachaResult(result);
+
+  const btn = document.getElementById('btnPreregGacha');
+  btn.textContent = '✅ 使用済み';
+  btn.classList.add('registered');
+}
+
+/* ============================================================
+  ガチャ処理
+  n: 回数、guaranteeRare: レア以上確定フラグ
+============================================================ -->
+*/
+function doGacha(n) {
+  const cost = n === 1 ? 150 : 1350;
+  if (getCoins() < cost) { showToast('💸 コインが足りません！'); return; }
+
+  addCoins(-cost);
+
+  // ガチャボックスをスピン演出
+  const box = document.getElementById('gachaBox');
+  box.classList.add('spinning');
+  setTimeout(() => {
+    box.classList.remove('spinning');
+    const results = rollGacha(n, false);
+    showGachaResult(results);
+  }, 800);
+}
+
+/* レアリティを抽選してアイテムを返す */
+function rollGacha(n, guaranteeRare) {
+  const results = [];
+  for (let i = 0; i < n; i++) {
+    // レアリティを決定
+    let rarity;
+    if (guaranteeRare) {
+      // 保証あり：レア以上から抽選
+      const r = Math.random() * (3 + 12 + 25); // legend+epic+rare の合計weight
+      if (r < 3)      rarity = 'legend';
+      else if (r < 15) rarity = 'epic';
+      else             rarity = 'rare';
+    } else {
+      const r = Math.random() * 100;
+      if (r < 3)       rarity = 'legend';
+      else if (r < 15) rarity = 'epic';
+      else if (r < 40) rarity = 'rare';
+      else             rarity = 'common';
+    }
+
+    // そのレアリティのアイテムからランダム選択
+    const pool = ALL_ITEMS.filter(i => i.rarity === rarity);
+    const item = pool[Math.floor(Math.random() * pool.length)];
+
+    if (item) {
+      results.push(item);
+
+      // スキン・エモートは所持リストに追加
+      if (item.type !== 'coin' && !owns(item.id)) {
+        const o = getOwned(); o.push(item.id); setOwned(o);
+      }
+      // コインアイテムなら実際のコインを付与
+      if (item.type === 'coin') addCoins(item.coinAmt);
+    }
+  }
+  return results;
+}
+
+/* ガチャ結果モーダルを表示 */
+function showGachaResult(results) {
+  const container = document.getElementById('gachaResultItems');
+  container.innerHTML = '';
+
+  const rarMap = { common:'コモン', rare:'レア', epic:'エピック', legend:'レジェンド' };
+
+  results.forEach(item => {
+    const div = document.createElement('div');
+    div.className = `gacha-result-item ${item.rarity}`;
+    div.innerHTML = `
+      <div class="gri-icon">${item.icon}</div>
+      <div class="gri-name">${item.name}</div>
+      <div class="gri-rarity" style="color:${rarityColor(item.rarity)}">${rarMap[item.rarity]}</div>
+    `;
+    container.appendChild(div);
+  });
+
+  document.getElementById('gachaResultOverlay').classList.add('open');
+  buildShopGrid(); buildSkinsGrid();
+}
+
+function closeGachaResult() {
+  document.getElementById('gachaResultOverlay').classList.remove('open');
+}
+
+/* レアリティに対応したカラーコードを返す */
+function rarityColor(r) {
+  return { common:'#aaa', rare:'#c084fc', epic:'#f59e0b', legend:'#ff3366' }[r] || '#aaa';
+}
+
+/* ============================================================
+  トースト通知
+  短時間メッセージを画面上部に表示
+============================================================ -->
+*/
+function showToast(msg) {
+  document.querySelectorAll('.toast').forEach(t => t.remove());
+  const div = document.createElement('div');
+  div.className   = 'toast';
+  div.textContent = msg;
+  document.body.appendChild(div);
+  setTimeout(() => div.remove(), 2300);
+}
+</script>
+</body>
+</html>
