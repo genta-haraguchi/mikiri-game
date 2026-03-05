@@ -1,0 +1,1390 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>ミキリファイト！オンライン</title>
+
+<!-- ========================================================
+  🔧 FIREBASE SETUP — ここにあなたの設定を貼り付けてください
+  手順は下のガイドを見てね！
+======================================================== -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getDatabase, ref, set, onValue, push, remove, onDisconnect, serverTimestamp, get }
+    from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+  // ▼▼▼ ここにFirebaseの設定を貼る ▼▼▼
+  const firebaseConfig = {
+    apiKey: "AIzaSyCigiPbiTWq6ggIOc5cDhRT1wHp-u1vcMg",
+    authDomain: "mikiri-on-line.firebaseapp.com",
+    databaseURL: "https://mikiri-on-line-default-rtdb.firebaseio.com",
+    projectId: "mikiri-on-line",
+    storageBucket: "mikiri-on-line.firebasestorage.app",
+    messagingSenderId: "869535906682",
+    appId: "1:869535906682:web:6113039ddfac93e2c274c3"
+};
+  // ▲▲▲ ここまで ▲▲▲
+
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+  window._db = db;
+  window._dbFns = { ref, set, onValue, push, remove, onDisconnect, serverTimestamp, get };
+  window._firebaseReady = true;
+  document.dispatchEvent(new Event('firebase-ready'));
+</script>
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Fredoka+One&family=Noto+Sans+JP:wght@700;900&display=swap');
+
+:root {
+  --pink:   #ff6eb4;
+  --blue:   #6ec6ff;
+  --yellow: #ffe566;
+  --green:  #7ee86a;
+  --purple: #c084fc;
+  --orange: #fb923c;
+  --red:    #f87171;
+  --teal:   #34d399;
+  --bg:     #e8f4ff;
+  --ground: #a8e090;
+  --white:  #ffffff;
+  --shadow: rgba(0,0,0,0.12);
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  font-family: 'Fredoka One', 'Noto Sans JP', cursive;
+  background: linear-gradient(180deg, #b8eaff 0%, #d4f0ff 55%, #c2f0a0 85%, #a8e090 100%);
+  min-height: 100vh;
+  overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* ===== SCREENS ===== */
+.screen { display:none; position:fixed; inset:0; flex-direction:column; align-items:center; justify-content:center; z-index:100; }
+.screen.active { display:flex; }
+
+/* ===== SETUP GUIDE (shown when Firebase not configured) ===== */
+#setupGuide {
+  background: rgba(255,255,255,0.97);
+  overflow-y: auto;
+  padding: 24px;
+  z-index: 200;
+}
+.guide-wrap { max-width: 600px; width: 100%; }
+.guide-title { font-size: 26px; color: #ff3080; text-align:center; margin-bottom: 4px; }
+.guide-sub { color: #888; text-align:center; font-size:13px; margin-bottom:24px; }
+.guide-step {
+  background: #f8f8ff;
+  border-left: 4px solid var(--pink);
+  border-radius: 12px;
+  padding: 14px 18px;
+  margin-bottom: 14px;
+}
+.step-num { font-size:13px; color: var(--pink); margin-bottom:4px; letter-spacing:1px; }
+.step-body { font-size:14px; color:#333; line-height:1.8; }
+.step-body a { color:#4a90ff; }
+.step-body code {
+  background: #eee; border-radius:4px; padding:2px 6px;
+  font-family: monospace; font-size:12px; color:#c0392b;
+}
+.step-body ul { margin-left:18px; }
+.config-box {
+  background: #1e1e2e;
+  border-radius: 12px;
+  padding: 16px;
+  margin: 8px 0;
+  font-family: monospace;
+  font-size: 12px;
+  color: #cdd6f4;
+  line-height: 1.7;
+  overflow-x: auto;
+}
+.config-key { color: #89b4fa; }
+.config-val { color: #a6e3a1; }
+.config-str { color: #f38ba8; }
+.btn-continue {
+  width: 100%;
+  background: linear-gradient(135deg, #ff6eb4, #d94090);
+  border: none; color: white;
+  font-family: 'Fredoka One', cursive;
+  font-size: 20px; padding: 14px;
+  border-radius: 16px; cursor: pointer;
+  box-shadow: 0 4px 0 #a0205a;
+  margin-top: 8px;
+  transition: all 0.1s;
+}
+.btn-continue:active { transform: translateY(3px); box-shadow: 0 1px 0 #a0205a; }
+
+/* ===== LOBBY ===== */
+#lobbyScreen { background: rgba(220,240,255,0.92); backdrop-filter: blur(6px); }
+
+.lobby-title {
+  font-size: clamp(32px, 7vw, 64px);
+  color: #d94090;
+  text-shadow: 3px 3px 0 #fff, 5px 5px 0 var(--pink);
+  text-align: center;
+  margin-bottom: 6px;
+  animation: wiggle 2s ease-in-out infinite;
+}
+@keyframes wiggle {
+  0%,100% { transform: rotate(-2deg); }
+  50% { transform: rotate(2deg); }
+}
+.lobby-sub { color: #999; font-size: 13px; letter-spacing: 2px; margin-bottom: 28px; }
+
+.name-input-wrap { margin-bottom: 20px; text-align: center; }
+.name-input-wrap label { font-size: 14px; color: #888; display:block; margin-bottom:6px; }
+.name-input {
+  font-family: 'Fredoka One', cursive;
+  font-size: 18px;
+  padding: 10px 20px;
+  border: 3px solid var(--pink);
+  border-radius: 20px;
+  background: white;
+  color: #333;
+  text-align: center;
+  width: 220px;
+  outline: none;
+}
+.name-input:focus { border-color: #d94090; box-shadow: 0 0 0 3px rgba(255,110,180,0.2); }
+
+.room-options { display:flex; gap:16px; flex-wrap: wrap; justify-content:center; margin-bottom: 24px; }
+
+.btn-room {
+  font-family: 'Fredoka One', cursive;
+  font-size: 16px;
+  padding: 12px 28px;
+  border: none; border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.1s;
+  box-shadow: 0 4px 0 rgba(0,0,0,0.15);
+}
+.btn-room:active { transform: translateY(3px); box-shadow: 0 1px 0 rgba(0,0,0,0.15); }
+.btn-create { background: linear-gradient(135deg, #ff6eb4, #d94090); color: white; }
+.btn-join   { background: linear-gradient(135deg, #6ec6ff, #2a8fd4); color: white; }
+
+.room-join-wrap { display:flex; gap:10px; align-items:center; flex-wrap:wrap; justify-content:center; }
+.room-id-input {
+  font-family: 'Fredoka One', cursive;
+  font-size: 20px;
+  padding: 10px 16px;
+  border: 3px solid var(--blue);
+  border-radius: 16px;
+  background: white;
+  color: #333;
+  text-align: center;
+  width: 160px;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  outline: none;
+}
+
+/* ===== WAITING ROOM ===== */
+#waitingScreen { background: rgba(220,240,255,0.92); backdrop-filter: blur(6px); }
+
+.room-code-display {
+  background: white;
+  border: 3px solid var(--pink);
+  border-radius: 20px;
+  padding: 16px 32px;
+  text-align: center;
+  margin-bottom: 20px;
+  box-shadow: 0 4px 0 rgba(255,110,180,0.3);
+}
+.rcd-label { font-size: 12px; color: #aaa; letter-spacing: 2px; }
+.rcd-code { font-size: 40px; color: #d94090; letter-spacing: 8px; }
+.rcd-hint { font-size: 12px; color: #bbb; margin-top: 4px; }
+
+.player-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
+  margin-bottom: 24px;
+  max-width: 480px;
+}
+.player-card {
+  background: white;
+  border-radius: 16px;
+  padding: 12px 20px;
+  text-align: center;
+  box-shadow: 0 3px 0 var(--shadow);
+  border: 2px solid #eee;
+  min-width: 100px;
+  animation: card-pop 0.3s cubic-bezier(0.34,1.56,0.64,1);
+}
+@keyframes card-pop { from { transform: scale(0); } to { transform: scale(1); } }
+.pc-avatar { font-size: 32px; }
+.pc-name { font-size: 14px; color: #555; margin-top: 4px; }
+.pc-host { font-size: 10px; color: var(--pink); letter-spacing: 1px; }
+
+.waiting-hint { font-size: 13px; color: #aaa; margin-bottom: 16px; text-align: center; }
+.btn-start-game {
+  font-family: 'Fredoka One', cursive;
+  font-size: 22px;
+  padding: 14px 60px;
+  background: linear-gradient(135deg, #ffe566, #ffb800);
+  color: #7a5000;
+  border: none; border-radius: 50px; cursor: pointer;
+  box-shadow: 0 5px 0 #b07800;
+  transition: all 0.1s;
+  display: none;
+}
+.btn-start-game.visible { display: block; }
+.btn-start-game:active { transform: translateY(4px); box-shadow: 0 1px 0 #b07800; }
+
+/* ===== GAME ===== */
+#gameScreen { background: transparent; pointer-events: none; }
+
+canvas { position: fixed; inset: 0; z-index: 1; }
+
+.game-hud {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  padding: 10px 12px 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  z-index: 20;
+  pointer-events: none;
+  justify-content: center;
+}
+
+.hud-card {
+  background: rgba(255,255,255,0.9);
+  border-radius: 14px;
+  padding: 6px 12px;
+  box-shadow: 0 3px 0 var(--shadow);
+  min-width: 90px;
+  text-align: center;
+  border: 2px solid #eee;
+  position: relative;
+}
+.hud-card.dead { opacity: 0.4; }
+.hud-card.me { border-color: #ffdd00; box-shadow: 0 3px 0 #cc9900; }
+.hc-name { font-size: 11px; color: #777; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 80px; }
+.hc-hp-bar { background: #eee; border-radius: 6px; height: 10px; margin: 3px 0; overflow: hidden; border: 1px solid #ddd; }
+.hc-hp-fill { height: 100%; border-radius: 5px; transition: width 0.2s; }
+.hc-hp-num { font-size: 10px; color: #aaa; }
+
+/* action keys hint */
+.key-hint {
+  position: fixed;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(255,255,255,0.85);
+  border-radius: 16px;
+  padding: 8px 20px;
+  font-size: 13px;
+  color: #555;
+  z-index: 20;
+  pointer-events: none;
+  white-space: nowrap;
+  box-shadow: 0 2px 0 var(--shadow);
+}
+kbd {
+  background: #f0f0f0;
+  border: 1px solid #ccc;
+  border-bottom: 3px solid #aaa;
+  border-radius: 6px;
+  padding: 2px 8px;
+  font-family: monospace;
+  font-size: 12px;
+}
+
+/* attack warning */
+.atk-warn {
+  position: fixed;
+  z-index: 30;
+  pointer-events: none;
+  text-align: center;
+  animation: warn-in 0.2s cubic-bezier(0.34,1.56,0.64,1);
+}
+@keyframes warn-in { from { transform: scale(0); } to { transform: scale(1); } }
+.warn-emoji { font-size: 28px; animation: bounce-warn 0.25s ease-in-out infinite alternate; }
+@keyframes bounce-warn { from { transform: translateY(0); } to { transform: translateY(-6px); } }
+.warn-text {
+  background: #ff4400;
+  color: white;
+  border-radius: 10px;
+  padding: 3px 12px;
+  font-size: 12px;
+  margin-top: 2px;
+  box-shadow: 0 2px 0 rgba(0,0,0,0.2);
+}
+
+/* float text */
+.float-txt {
+  position: fixed;
+  font-size: 26px;
+  pointer-events: none;
+  z-index: 40;
+  animation: float-up 1.2s ease-out forwards;
+  text-shadow: 2px 2px 0 rgba(0,0,0,0.15);
+  white-space: nowrap;
+}
+@keyframes float-up {
+  0%   { transform: translateY(0) scale(1); opacity: 1; }
+  60%  { transform: translateY(-55px) scale(1.15); opacity: 1; }
+  100% { transform: translateY(-90px) scale(0.8); opacity: 0; }
+}
+
+/* countdown */
+.cd-overlay {
+  position: fixed; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  z-index: 50; pointer-events: none;
+}
+.cd-num {
+  font-size: 110px;
+  color: white;
+  text-shadow: 4px 4px 0 #d94090;
+  animation: cd-anim 0.7s cubic-bezier(0.34,1.56,0.64,1) forwards;
+}
+@keyframes cd-anim {
+  0%   { transform: scale(2.5); opacity: 0; }
+  30%  { opacity: 1; }
+  80%  { transform: scale(1); opacity: 1; }
+  100% { transform: scale(0.8); opacity: 0; }
+}
+
+/* result overlay */
+#resultOverlay {
+  display: none;
+  position: fixed; inset: 0;
+  background: rgba(255,240,200,0.93);
+  backdrop-filter: blur(6px);
+  flex-direction: column;
+  align-items: center; justify-content: center;
+  z-index: 80;
+}
+#resultOverlay.visible { display: flex; }
+.result-big { font-size: 60px; animation: result-pop 0.5s cubic-bezier(0.34,1.56,0.64,1); }
+@keyframes result-pop { from { transform: scale(0) rotate(-15deg); } to { transform: scale(1) rotate(0); } }
+.result-name { font-size: 30px; margin: 8px 0 20px; }
+.result-table {
+  background: white; border-radius: 16px;
+  padding: 16px 24px; margin-bottom: 20px;
+  box-shadow: 0 4px 0 var(--shadow);
+  min-width: 260px;
+}
+.rt-row { display:flex; justify-content:space-between; gap:24px; font-size:14px; color:#555; margin:4px 0; }
+.rt-row span { color: #333; font-weight: 700; }
+.btn-lobby {
+  font-family: 'Fredoka One', cursive;
+  font-size: 20px; padding: 12px 48px;
+  background: linear-gradient(135deg, #ff6eb4, #d94090);
+  color: white; border: none; border-radius: 50px; cursor: pointer;
+  box-shadow: 0 4px 0 #a02060;
+  pointer-events: auto;
+  transition: all 0.1s;
+}
+.btn-lobby:active { transform: translateY(3px); box-shadow: 0 1px 0 #a02060; }
+</style>
+</head>
+<body>
+
+<!-- ========== SETUP GUIDE ========== -->
+<div id="setupGuide" class="screen active">
+  <div class="guide-wrap">
+    <div class="guide-title">🔧 Firebase セットアップガイド</div>
+    <div class="guide-sub">最初の1回だけ設定が必要です！約10〜15分で完了します</div>
+
+    <div class="guide-step">
+      <div class="step-num">STEP 1</div>
+      <div class="step-body">
+        <a href="https://console.firebase.google.com" target="_blank">https://console.firebase.google.com</a> を開いてGoogleアカウントでログイン
+      </div>
+    </div>
+
+    <div class="guide-step">
+      <div class="step-num">STEP 2</div>
+      <div class="step-body">
+        「プロジェクトを追加」→ 好きな名前（例: <code>mikiri-game</code>）を入力 → Googleアナリティクスは <b>オフ</b> でOK → 「プロジェクトを作成」
+      </div>
+    </div>
+
+    <div class="guide-step">
+      <div class="step-num">STEP 3</div>
+      <div class="step-body">
+        プロジェクトができたら左メニューの「構築」→「<b>Realtime Database</b>」→「データベースを作成」<br>
+        リージョンは <code>asia-southeast1</code>（シンガポール）が日本から近くておすすめ<br>
+        セキュリティルールは「<b>テストモードで開始</b>」を選択
+      </div>
+    </div>
+
+    <div class="guide-step">
+      <div class="step-num">STEP 4</div>
+      <div class="step-body">
+        左メニューの「プロジェクトの概要」横の⚙️ → 「プロジェクトの設定」 → 「マイアプリ」セクションで <b>&lt;/&gt;</b>（ウェブ）をクリック<br>
+        アプリのニックネームを入力 → 「アプリを登録」<br>
+        <b>firebaseConfig</b> が表示されます：
+        <div class="config-box">
+<span class="config-key">const</span> firebaseConfig = {<br>
+&nbsp;&nbsp;<span class="config-key">apiKey</span>: <span class="config-str">"AIzaSy..."</span>,<br>
+&nbsp;&nbsp;<span class="config-key">authDomain</span>: <span class="config-str">"your-project.firebaseapp.com"</span>,<br>
+&nbsp;&nbsp;<span class="config-key">databaseURL</span>: <span class="config-str">"https://your-project-rtdb.firebaseio.com"</span>,<br>
+&nbsp;&nbsp;<span class="config-key">projectId</span>: <span class="config-str">"your-project"</span>,<br>
+&nbsp;&nbsp;<span class="config-key">storageBucket</span>: <span class="config-str">"your-project.appspot.com"</span>,<br>
+&nbsp;&nbsp;<span class="config-key">messagingSenderId</span>: <span class="config-str">"123456789"</span>,<br>
+&nbsp;&nbsp;<span class="config-key">appId</span>: <span class="config-str">"1:123..."</span><br>
+};
+        </div>
+      </div>
+    </div>
+
+    <div class="guide-step">
+      <div class="step-num">STEP 5</div>
+      <div class="step-body">
+        このHTMLファイルをテキストエディタで開き、<br>
+        上の方にある <code>firebaseConfig</code> の中身を、Firebaseでコピーした値に貼り替えてください<br>
+        ファイルを保存してブラウザで開けば完成！🎉<br><br>
+        友達にも同じHTMLファイルを送るか、<b>GitHub Pages</b> などに公開するとURLで共有できます
+      </div>
+    </div>
+
+    <button class="btn-continue" onclick="continueWithoutFirebase()">
+      ⚠️ まず動きだけ確認する（デモモード）
+    </button>
+  </div>
+</div>
+
+<!-- ========== LOBBY ========== -->
+<div id="lobbyScreen" class="screen">
+  <div class="lobby-title">✨ ミキリファイト！</div>
+  <div class="lobby-sub">オンライン対戦 最大6人</div>
+
+  <div class="name-input-wrap">
+    <label>あなたの名前</label>
+    <input class="name-input" id="nameInput" type="text" placeholder="名前を入力" maxlength="10">
+  </div>
+
+  <div class="room-options">
+    <button class="btn-room btn-create" onclick="createRoom()">🏠 部屋をつくる</button>
+  </div>
+  <div class="room-join-wrap">
+    <input class="room-id-input" id="roomCodeInput" type="text" placeholder="ABCD" maxlength="4">
+    <button class="btn-room btn-join" onclick="joinRoom()">🚪 入室する</button>
+  </div>
+</div>
+
+<!-- ========== WAITING ========== -->
+<div id="waitingScreen" class="screen">
+  <div class="lobby-title" style="font-size:clamp(24px,5vw,42px)">待合室</div>
+  <div class="room-code-display">
+    <div class="rcd-label">ROOM CODE</div>
+    <div class="rcd-code" id="roomCodeDisplay">----</div>
+    <div class="rcd-hint">友達にこのコードを教えてね！</div>
+  </div>
+  <div class="player-list" id="playerList"></div>
+  <div class="waiting-hint" id="waitingHint">あと2人以上集まるとゲームを始められます</div>
+  <button class="btn-start-game" id="btnStartGame" onclick="hostStartGame()">🎮 ゲームスタート！</button>
+</div>
+
+<!-- ========== GAME ========== -->
+<div id="gameScreen" class="screen">
+  <canvas id="gc"></canvas>
+  <div class="game-hud" id="gameHud"></div>
+  <div class="key-hint">
+    <kbd>F</kbd> 攻撃 &nbsp;|&nbsp; <kbd>G</kbd> 見切り &nbsp;|&nbsp; スマホ: 画面下ボタン
+  </div>
+  <!-- Mobile buttons -->
+  <div id="mobileButtons" style="
+    position:fixed; bottom:60px; left:50%; transform:translateX(-50%);
+    display:flex; gap:20px; z-index:20;
+  ">
+    <button onclick="handleAttack()" style="
+      font-family:'Fredoka One',cursive; font-size:18px;
+      padding:14px 30px; background:linear-gradient(135deg,#ff6eb4,#d94090);
+      color:white; border:none; border-radius:50px;
+      box-shadow:0 4px 0 #a02060; cursor:pointer;
+    ">👊 攻撃</button>
+    <button onclick="handleParry()" style="
+      font-family:'Fredoka One',cursive; font-size:18px;
+      padding:14px 30px; background:linear-gradient(135deg,#ffe566,#ffb800);
+      color:#7a5000; border:none; border-radius:50px;
+      box-shadow:0 4px 0 #cc8800; cursor:pointer;
+    ">⚡ 見切り</button>
+  </div>
+</div>
+
+<!-- ========== RESULT ========== -->
+<div id="resultOverlay">
+  <div class="result-big" id="roBig">🏆</div>
+  <div class="result-name" id="roName"></div>
+  <div class="result-table" id="roTable"></div>
+  <button class="btn-lobby" onclick="backToLobby()">ロビーに戻る</button>
+</div>
+
+<script>
+// ===== PLAYER COLORS =====
+const COLORS = ['#ff6eb4','#6ec6ff','#ffe566','#7ee86a','#c084fc','#fb923c'];
+const OUTLINES = ['#d94090','#2a8fd4','#cc9900','#2aaa00','#7c3aed','#c2410c'];
+const AVATARS = ['🩷','💙','💛','💚','💜','🧡'];
+
+const MAX_HP = 100;
+const ATTACK_WARN_MS = 600;
+const PARRY_WINDOW_MIN = 80;
+const PARRY_WINDOW_MAX = 450;
+const ATTACK_DAMAGE = 20;
+const PARRY_DAMAGE = 35;
+const ATK_COOLDOWN = 1400;
+const PARRY_COOLDOWN = 900;
+
+// ===== STATE =====
+let myId = null;
+let myName = '';
+let roomId = null;
+let isHost = false;
+let demoMode = false;
+
+let players = {};       // { id: { name, color, hp, state, x, y, ... } }
+let myState = {
+  hp: MAX_HP,
+  state: 'idle',
+  atkCd: 0,
+  parryCd: 0,
+  parryCount: 0,
+  pendingAtk: null,     // { targetId, warnStart, hitAt }
+  incomingAtk: null,    // { attackerId, warnStart, hitAt }
+};
+
+let particles = [];
+let warnEls = {};
+let gameRunning = false;
+let gameOver = false;
+
+// ===== CANVAS =====
+const canvas = document.getElementById('gc');
+const ctx = canvas.getContext('2d');
+let W, H;
+
+function resize() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+}
+resize();
+window.addEventListener('resize', resize);
+
+// ===== FIREBASE HELPERS =====
+function db() { return window._db; }
+const F = () => window._dbFns;
+
+function generateRoomId() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  return Array.from({length:4}, () => chars[Math.floor(Math.random()*chars.length)]).join('');
+}
+function generatePlayerId() {
+  return Math.random().toString(36).substr(2, 9);
+}
+
+// ===== SETUP GUIDE =====
+function continueWithoutFirebase() {
+  demoMode = true;
+  document.getElementById('setupGuide').classList.remove('active');
+  document.getElementById('lobbyScreen').classList.add('active');
+}
+
+// Check if Firebase configured
+document.addEventListener('firebase-ready', () => {
+  const cfg = document.querySelector('script[type="module"]').textContent;
+  if (cfg.includes('YOUR_API_KEY')) {
+    // Not configured — show guide
+  } else {
+    document.getElementById('setupGuide').classList.remove('active');
+    document.getElementById('lobbyScreen').classList.add('active');
+  }
+});
+
+// ===== LOBBY =====
+function createRoom() {
+  const name = document.getElementById('nameInput').value.trim() || 'プレイヤー';
+  myName = name;
+  myId = generatePlayerId();
+  roomId = generateRoomId();
+  isHost = true;
+
+  if (demoMode) {
+    startDemoGame();
+    return;
+  }
+
+  const { ref, set, onValue, onDisconnect } = F();
+  const playerRef = ref(db(), `rooms/${roomId}/players/${myId}`);
+  set(playerRef, {
+    name: myName,
+    hp: MAX_HP,
+    state: 'idle',
+    parryCount: 0,
+    joinedAt: Date.now(),
+    alive: true,
+  });
+  onDisconnect(playerRef).remove();
+
+  set(ref(db(), `rooms/${roomId}/meta`), {
+    host: myId,
+    status: 'waiting',
+    createdAt: Date.now(),
+  });
+
+  showWaitingRoom();
+  listenRoom();
+}
+
+function joinRoom() {
+  const code = document.getElementById('roomCodeInput').value.trim().toUpperCase();
+  if (!code || code.length !== 4) { alert('4文字のコードを入力してください'); return; }
+
+  const name = document.getElementById('nameInput').value.trim() || 'プレイヤー';
+  myName = name;
+  myId = generatePlayerId();
+  roomId = code;
+  isHost = false;
+
+  if (demoMode) {
+    alert('デモモードではルームコードは使えません。「部屋をつくる」を使ってください');
+    return;
+  }
+
+  const { ref, set, get, onDisconnect } = F();
+  get(ref(db(), `rooms/${roomId}/meta`)).then(snap => {
+    if (!snap.exists()) { alert('その部屋は存在しません'); return; }
+    const meta = snap.val();
+    if (meta.status === 'playing') { alert('そのゲームはすでに開始しています'); return; }
+
+    const playerRef = ref(db(), `rooms/${roomId}/players/${myId}`);
+    set(playerRef, {
+      name: myName,
+      hp: MAX_HP,
+      state: 'idle',
+      parryCount: 0,
+      joinedAt: Date.now(),
+      alive: true,
+    });
+    onDisconnect(playerRef).remove();
+    showWaitingRoom();
+    listenRoom();
+  });
+}
+
+function showWaitingRoom() {
+  document.getElementById('lobbyScreen').classList.remove('active');
+  document.getElementById('waitingScreen').classList.add('active');
+  document.getElementById('roomCodeDisplay').textContent = roomId;
+}
+
+function listenRoom() {
+  const { ref, onValue, set } = F();
+
+  // Listen players
+  onValue(ref(db(), `rooms/${roomId}/players`), snap => {
+    if (!snap.exists()) return;
+    const data = snap.val();
+    updatePlayerList(data);
+
+    if (gameRunning) {
+      // Update HP etc from Firebase
+      Object.entries(data).forEach(([id, p]) => {
+        if (id !== myId) {
+          players[id] = { ...players[id], ...p, id };
+        }
+      });
+      rebuildHUD();
+    }
+  });
+
+  // Listen meta (game start signal)
+  onValue(ref(db(), `rooms/${roomId}/meta`), snap => {
+    if (!snap.exists()) return;
+    const meta = snap.val();
+    if (meta.status === 'playing' && !gameRunning) {
+      startGame(meta.playerOrder || []);
+    }
+  });
+
+  // Listen attacks
+  onValue(ref(db(), `rooms/${roomId}/attacks`), snap => {
+    if (!snap.exists() || !gameRunning) return;
+    const attacks = snap.val();
+    Object.entries(attacks).forEach(([atkId, atk]) => {
+      if (atk.targetId === myId && !atk.processed) {
+        receiveAttack(atkId, atk);
+      }
+    });
+  });
+}
+
+function updatePlayerList(data) {
+  const list = document.getElementById('playerList');
+  list.innerHTML = '';
+  const ids = Object.keys(data);
+  ids.forEach((id, i) => {
+    const p = data[id];
+    const card = document.createElement('div');
+    card.className = 'player-card';
+    card.innerHTML = `
+      <div class="pc-avatar">${AVATARS[i % AVATARS.length]}</div>
+      <div class="pc-name">${p.name}</div>
+      ${id === data[Object.keys(data)[0]] ? '' : ''}
+    `;
+    list.appendChild(card);
+  });
+
+  const hint = document.getElementById('waitingHint');
+  const btn = document.getElementById('btnStartGame');
+  if (ids.length >= 2) {
+    hint.textContent = `${ids.length}人が待機中！`;
+    if (isHost) btn.classList.add('visible');
+  } else {
+    hint.textContent = 'あと1人以上集まるとゲームを始められます';
+    btn.classList.remove('visible');
+  }
+}
+
+function hostStartGame() {
+  if (!isHost) return;
+  const { ref, set, get } = F();
+
+  get(ref(db(), `rooms/${roomId}/players`)).then(snap => {
+    const data = snap.val();
+    const order = Object.keys(data);
+    set(ref(db(), `rooms/${roomId}/meta`), {
+      host: myId,
+      status: 'playing',
+      playerOrder: order,
+      startedAt: Date.now(),
+    });
+  });
+}
+
+// ===== GAME START =====
+function startGame(order) {
+  gameRunning = true;
+  gameOver = false;
+
+  document.getElementById('waitingScreen').classList.remove('active');
+  document.getElementById('gameScreen').classList.add('active');
+
+  // Build player positions
+  const { ref, get } = F();
+  get(ref(db(), `rooms/${roomId}/players`)).then(snap => {
+    const data = snap.val();
+    const ids = order.length ? order : Object.keys(data);
+    const n = ids.length;
+
+    players = {};
+    ids.forEach((id, i) => {
+      const angle = (Math.PI * 2 * i / n) - Math.PI / 2;
+      const rx = W * 0.28, ry = H * 0.22;
+      const cx = W / 2, cy = H * 0.52;
+      players[id] = {
+        id,
+        name: data[id]?.name || '?',
+        color: COLORS[i % COLORS.length],
+        outline: OUTLINES[i % OUTLINES.length],
+        avatar: AVATARS[i % AVATARS.length],
+        hp: MAX_HP,
+        state: 'idle',
+        parryCount: 0,
+        alive: true,
+        x: cx + Math.cos(angle) * rx,
+        y: cy + Math.sin(angle) * ry,
+        atkCd: 0,
+        parryCd: 0,
+      };
+    });
+
+    if (players[myId]) {
+      myState = {
+        hp: MAX_HP, state: 'idle',
+        atkCd: 0, parryCd: 0,
+        parryCount: 0,
+        pendingAtk: null, incomingAtk: null,
+      };
+    }
+
+    rebuildHUD();
+    doCountdown(() => { /* game ticking starts */ });
+  });
+}
+
+// ===== DEMO MODE =====
+function startDemoGame() {
+  // Fake 5 players for demo
+  myId = 'me';
+  players = {};
+  const names = [myName, 'カービィ', 'メタナイト', 'デデデ', 'ワドルディ'];
+  const n = names.length;
+  names.forEach((name, i) => {
+    const angle = (Math.PI * 2 * i / n) - Math.PI / 2;
+    const id = i === 0 ? 'me' : 'bot' + i;
+    players[id] = {
+      id, name,
+      color: COLORS[i], outline: OUTLINES[i], avatar: AVATARS[i],
+      hp: MAX_HP, state: 'idle',
+      x: 0, y: 0,
+      alive: true, atkCd: 0, parryCd: 0, parryCount: 0,
+    };
+  });
+
+  gameRunning = true; gameOver = false;
+  document.getElementById('lobbyScreen').classList.remove('active');
+  document.getElementById('gameScreen').classList.add('active');
+  rebuildHUD();
+  doCountdown(() => {
+    // Demo: bots attack periodically
+    startBotLoop();
+  });
+}
+
+let botLoopInterval = null;
+function startBotLoop() {
+  botLoopInterval = setInterval(() => {
+    if (!gameRunning || gameOver) { clearInterval(botLoopInterval); return; }
+    const botIds = Object.keys(players).filter(id => id !== myId && players[id]?.alive);
+    if (!botIds.length) return;
+    const attacker = players[botIds[Math.floor(Math.random() * botIds.length)]];
+    const targetId = Math.random() < 0.4 ? myId : botIds[Math.floor(Math.random() * botIds.length)];
+    if (!players[targetId]?.alive || targetId === attacker.id) return;
+
+    attacker.state = 'attack';
+    attacker.atkCd = ATK_COOLDOWN;
+
+    if (targetId === myId) {
+      myState.incomingAtk = { attackerId: attacker.id, warnStart: Date.now(), hitAt: Date.now() + ATTACK_WARN_MS };
+      showWarn(attacker.id);
+    }
+
+    setTimeout(() => {
+      if (!gameRunning || !attacker.pendingHit) {
+        // Check if parried
+        if (targetId === myId && myState.incomingAtk && !myState.incomingAtk.parried) {
+          dealDamage(myId, ATTACK_DAMAGE, attacker.id);
+        } else if (targetId !== myId) {
+          dealDamage(targetId, ATTACK_DAMAGE, attacker.id);
+        }
+        if (targetId === myId) myState.incomingAtk = null;
+        clearWarn(attacker.id);
+        attacker.state = 'idle';
+      }
+    }, ATTACK_WARN_MS);
+  }, 1800 + Math.random() * 1200);
+}
+
+// ===== ATTACK / PARRY ACTIONS =====
+function handleAttack() {
+  if (!gameRunning || gameOver) return;
+  if (myState.atkCd > 0 || myState.state === 'stunned') return;
+
+  // Pick random alive target (not self)
+  const targets = Object.keys(players).filter(id => id !== myId && players[id]?.alive);
+  if (!targets.length) return;
+  const targetId = targets[Math.floor(Math.random() * targets.length)];
+
+  myState.state = 'attack';
+  myState.atkCd = ATK_COOLDOWN;
+  myState.pendingAtk = { targetId, warnStart: Date.now(), hitAt: Date.now() + ATTACK_WARN_MS, cancelled: false };
+
+  if (!demoMode) {
+    const { ref, set } = F();
+    const atkKey = myId + '_' + Date.now();
+    set(ref(db(), `rooms/${roomId}/attacks/${atkKey}`), {
+      attackerId: myId,
+      targetId,
+      warnStart: Date.now(),
+      hitAt: Date.now() + ATTACK_WARN_MS,
+      processed: false,
+    });
+    myState.pendingAtk.atkKey = atkKey;
+  } else {
+    // Demo: show warning on target (other bots handle it)
+    if (players[targetId]) {
+      players[targetId].state = 'hurt_pending';
+    }
+  }
+
+  setTimeout(() => {
+    if (myState.pendingAtk && !myState.pendingAtk.cancelled) {
+      dealDamage(targetId, ATTACK_DAMAGE, myId);
+    }
+    myState.pendingAtk = null;
+    if (myState.state === 'attack') myState.state = 'idle';
+  }, ATTACK_WARN_MS);
+}
+
+function handleParry() {
+  if (!gameRunning || gameOver) return;
+  if (myState.parryCd > 0 || myState.state === 'stunned') return;
+
+  myState.parryCd = PARRY_COOLDOWN;
+  myState.state = 'parry';
+  setTimeout(() => { if (myState.state === 'parry') myState.state = 'idle'; }, 300);
+
+  const incoming = myState.incomingAtk;
+  if (incoming && !incoming.parried) {
+    const elapsed = Date.now() - incoming.warnStart;
+    if (elapsed >= PARRY_WINDOW_MIN && elapsed <= PARRY_WINDOW_MAX) {
+      // SUCCESS!
+      incoming.parried = true;
+      myState.parryCount++;
+      spawnParticles(players[myId]?.x || W/2, players[myId]?.y || H/2, '#ffdd00', 14, 'star');
+      spawnParticles(players[myId]?.x || W/2, players[myId]?.y || H/2, '#00ffaa', 8, 'circle');
+      floatText((players[myId]?.x||W/2)-40, (players[myId]?.y||H/2)-80, '見切り！✨', '#ffaa00');
+
+      // Counter damage
+      dealDamage(incoming.attackerId, PARRY_DAMAGE, myId);
+
+      // Cancel attacker's pending attack (Firebase)
+      if (!demoMode && incoming.atkKey) {
+        const { ref, set } = F();
+        set(ref(db(), `rooms/${roomId}/attacks/${incoming.atkKey}/processed`), true);
+      }
+
+      // Stun attacker
+      if (players[incoming.attackerId]) {
+        players[incoming.attackerId].state = 'stunned';
+        setTimeout(() => { if (players[incoming.attackerId]) players[incoming.attackerId].state = 'idle'; }, 1500);
+      }
+
+      clearWarn(incoming.attackerId);
+      myState.incomingAtk = null;
+    } else {
+      floatText((players[myId]?.x||W/2)-40, (players[myId]?.y||H/2)-60,
+        elapsed < PARRY_WINDOW_MIN ? '早すぎ！' : '遅すぎ！', '#aaa');
+    }
+  } else {
+    floatText((players[myId]?.x||W/2)-30, (players[myId]?.y||H/2)-60, '空振り…', '#aaa');
+  }
+}
+
+// Keyboard
+window.addEventListener('keydown', e => {
+  if (e.code === 'KeyF') handleAttack();
+  if (e.code === 'KeyG') handleParry();
+});
+
+// ===== RECEIVE ATTACK (Firebase) =====
+function receiveAttack(atkKey, atk) {
+  if (!gameRunning || gameOver) return;
+  myState.incomingAtk = {
+    attackerId: atk.attackerId,
+    warnStart: atk.warnStart,
+    hitAt: atk.hitAt,
+    atkKey,
+    parried: false,
+  };
+
+  showWarn(atk.attackerId);
+  const remaining = atk.hitAt - Date.now();
+
+  setTimeout(() => {
+    if (myState.incomingAtk && !myState.incomingAtk.parried) {
+      dealDamage(myId, ATTACK_DAMAGE, atk.attackerId);
+      myState.incomingAtk = null;
+      clearWarn(atk.attackerId);
+    }
+    // Mark processed
+    const { ref, set } = F();
+    set(ref(db(), `rooms/${roomId}/attacks/${atkKey}/processed`), true);
+  }, Math.max(remaining, 50));
+}
+
+// ===== DAMAGE =====
+function dealDamage(targetId, dmg, attackerId) {
+  if (targetId === myId) {
+    myState.hp = Math.max(0, myState.hp - dmg);
+    players[myId].hp = myState.hp;
+    if (players[targetId]) players[targetId].state = 'hurt';
+    setTimeout(() => { if (players[targetId]?.state === 'hurt') players[targetId].state = 'idle'; }, 400);
+
+    spawnParticles(players[myId]?.x||W/2, players[myId]?.y||H/2, '#ff4040', 8, 'circle');
+    floatText((players[myId]?.x||W/2)-20, (players[myId]?.y||H/2)-60, `-${dmg}`, '#ff3333');
+
+    if (!demoMode) {
+      const { ref, set } = F();
+      set(ref(db(), `rooms/${roomId}/players/${myId}/hp`), myState.hp);
+    }
+
+    if (myState.hp <= 0) {
+      players[myId].alive = false;
+      myState.state = 'dead';
+      if (!demoMode) {
+        const { ref, set } = F();
+        set(ref(db(), `rooms/${roomId}/players/${myId}/alive`), false);
+      }
+    }
+  } else {
+    if (players[targetId]) {
+      players[targetId].hp = Math.max(0, players[targetId].hp - dmg);
+      if (players[targetId].hp <= 0) players[targetId].alive = false;
+      players[targetId].state = 'hurt';
+      setTimeout(() => { if (players[targetId]?.state === 'hurt') players[targetId].state = 'idle'; }, 400);
+      spawnParticles(players[targetId].x, players[targetId].y, '#ff4040', 8, 'circle');
+      floatText(players[targetId].x - 20, players[targetId].y - 60, `-${dmg}`, '#ff3333');
+    }
+  }
+
+  rebuildHUD();
+  checkGameOver();
+}
+
+function checkGameOver() {
+  const alive = Object.values(players).filter(p => p.alive);
+  if (alive.length <= 1) {
+    gameOver = true;
+    gameRunning = false;
+    clearInterval(botLoopInterval);
+    setTimeout(() => showResult(alive[0] || null), 800);
+  }
+}
+
+function showResult(winner) {
+  const overlay = document.getElementById('resultOverlay');
+  overlay.classList.add('visible');
+  document.getElementById('roBig').textContent = winner ? AVATARS[Object.values(players).indexOf(winner) % AVATARS.length] : '💀';
+  document.getElementById('roName').textContent = winner ? `${winner.name} の勝ち！🎉` : '引き分け！';
+
+  const rows = Object.values(players).map(p => `
+    <div class="rt-row">${p.avatar} ${p.name} <span>${p.parryCount}回見切り</span></div>
+  `).join('');
+  document.getElementById('roTable').innerHTML = rows;
+}
+
+function backToLobby() {
+  document.getElementById('resultOverlay').classList.remove('visible');
+  document.getElementById('gameScreen').classList.remove('active');
+  gameRunning = false; gameOver = false;
+  particles = []; warnEls = {};
+  document.getElementById('lobbyScreen').classList.add('active');
+}
+
+// ===== HUD =====
+function rebuildHUD() {
+  const hud = document.getElementById('gameHud');
+  hud.innerHTML = '';
+  Object.values(players).forEach(p => {
+    const card = document.createElement('div');
+    card.className = 'hud-card' + (p.id === myId ? ' me' : '') + (!p.alive ? ' dead' : '');
+    card.id = 'hud_' + p.id;
+    const pct = (p.hp / MAX_HP * 100);
+    const fillColor = p.color;
+    card.innerHTML = `
+      <div class="hc-name">${p.avatar} ${p.name}</div>
+      <div class="hc-hp-bar"><div class="hc-hp-fill" style="width:${pct}%;background:${fillColor}"></div></div>
+      <div class="hc-hp-num">${p.hp} / ${MAX_HP}</div>
+    `;
+    hud.appendChild(card);
+  });
+}
+
+// ===== WARNINGS =====
+function showWarn(attackerId) {
+  clearWarn(attackerId);
+  const target = players[myId];
+  if (!target) return;
+  const div = document.createElement('div');
+  div.className = 'atk-warn';
+  div.innerHTML = `<div class="warn-emoji">⚠️</div><div class="warn-text">見切れ！</div>`;
+  div.style.left = (target.x - 30) + 'px';
+  div.style.top = (target.y - 90) + 'px';
+  document.body.appendChild(div);
+  warnEls[attackerId] = div;
+}
+function clearWarn(attackerId) {
+  if (warnEls[attackerId]) { warnEls[attackerId].remove(); delete warnEls[attackerId]; }
+}
+
+// ===== PARTICLES =====
+function spawnParticles(x, y, color, count, type) {
+  for (let i = 0; i < count; i++) {
+    const a = (Math.PI * 2 * i / count) + Math.random() * 0.5;
+    const s = 3 + Math.random() * 5;
+    particles.push({
+      x, y, vx: Math.cos(a)*s, vy: Math.sin(a)*s - 2,
+      size: type === 'star' ? 14 : 6,
+      color, life: 1.0, decay: 0.04,
+      emoji: type === 'star' ? ['⭐','✨','💫'][Math.floor(Math.random()*3)] : null,
+    });
+  }
+}
+
+function floatText(x, y, text, color) {
+  const div = document.createElement('div');
+  div.className = 'float-txt';
+  div.textContent = text;
+  div.style.left = x + 'px';
+  div.style.top = y + 'px';
+  div.style.color = color;
+  document.body.appendChild(div);
+  setTimeout(() => div.remove(), 1300);
+}
+
+// ===== COUNTDOWN =====
+function doCountdown(cb) {
+  const overlay = document.createElement('div');
+  overlay.className = 'cd-overlay';
+  document.body.appendChild(overlay);
+  let n = 3;
+  const tick = () => {
+    overlay.innerHTML = '';
+    const div = document.createElement('div');
+    div.className = 'cd-num';
+    div.textContent = n > 0 ? n : 'ファイト！';
+    div.style.color = n > 0 ? 'white' : '#ffaa00';
+    overlay.appendChild(div);
+    if (n > 0) { n--; setTimeout(tick, 800); }
+    else setTimeout(() => { overlay.remove(); cb(); }, 700);
+  };
+  tick();
+}
+
+// ===== DRAW KIRBY =====
+function drawKirby(x, y, color, outline, size, state, isMe) {
+  const r = size;
+  ctx.save();
+  ctx.translate(x, y);
+
+  let sx = 1, sy = 1;
+  if (state === 'attack') { sx = 1.25; sy = 0.8; }
+  if (state === 'hurt')   { sx = 0.8; sy = 1.2; }
+  if (state === 'parry')  { sx = 1.1; sy = 1.1; }
+  if (state === 'stunned'){ sx = 0.7; sy = 1.3; }
+  if (state === 'dead')   { sx = 0.5; sy = 0.5; ctx.globalAlpha = 0.4; }
+  ctx.scale(sx, sy);
+
+  // Shadow
+  ctx.beginPath();
+  ctx.ellipse(0, r*0.9/sy, r*0.65/sx, r*0.16/sy, 0, 0, Math.PI*2);
+  ctx.fillStyle = 'rgba(0,0,0,0.12)';
+  ctx.fill();
+
+  // Parry aura
+  if (state === 'parry') {
+    ctx.beginPath();
+    ctx.arc(0, 0, r*1.5, 0, Math.PI*2);
+    ctx.fillStyle = 'rgba(255,255,100,0.25)';
+    ctx.fill();
+    ctx.strokeStyle = '#ffdd00';
+    ctx.lineWidth = 3;
+    ctx.setLineDash([4,4]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  // "Me" highlight
+  if (isMe) {
+    ctx.beginPath();
+    ctx.arc(0, 0, r*1.2, 0, Math.PI*2);
+    ctx.strokeStyle = '#ffe566';
+    ctx.lineWidth = 3;
+    ctx.stroke();
+  }
+
+  // Body
+  ctx.beginPath();
+  ctx.arc(0, 0, r, 0, Math.PI*2);
+  ctx.fillStyle = color;
+  ctx.fill();
+  ctx.strokeStyle = outline;
+  ctx.lineWidth = 3;
+  ctx.stroke();
+
+  // Cheeks
+  ctx.beginPath();
+  ctx.ellipse(-r*0.3, r*0.15, r*0.18, r*0.12, -0.3, 0, Math.PI*2);
+  ctx.fillStyle = 'rgba(255,80,120,0.4)';
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(r*0.3, r*0.15, r*0.18, r*0.12, 0.3, 0, Math.PI*2);
+  ctx.fill();
+
+  // Eyes
+  const ey = -r*0.1;
+  if (state === 'hurt' || state === 'stunned' || state === 'dead') {
+    [-r*0.24, r*0.24].forEach(ex => {
+      ctx.beginPath();
+      const es = r*0.12;
+      ctx.moveTo(ex-es,ey-es); ctx.lineTo(ex+es,ey+es);
+      ctx.moveTo(ex+es,ey-es); ctx.lineTo(ex-es,ey+es);
+      ctx.strokeStyle='#333'; ctx.lineWidth=2.5; ctx.stroke();
+    });
+  } else {
+    [-r*0.24, r*0.24].forEach(ex => {
+      const es = r*0.14;
+      ctx.beginPath();
+      ctx.ellipse(ex, ey, es*0.7, es, 0, 0, Math.PI*2);
+      ctx.fillStyle='#222'; ctx.fill();
+      ctx.beginPath();
+      ctx.arc(ex+es*0.2, ey-es*0.3, es*0.2, 0, Math.PI*2);
+      ctx.fillStyle='white'; ctx.fill();
+    });
+  }
+
+  // Mouth
+  if (state === 'attack') {
+    ctx.beginPath(); ctx.arc(0,r*0.3,r*0.18,0,Math.PI);
+    ctx.strokeStyle='#333'; ctx.lineWidth=2.5; ctx.stroke();
+  } else if (state === 'hurt' || state === 'stunned') {
+    ctx.beginPath(); ctx.arc(0,r*0.45,r*0.11,Math.PI,0);
+    ctx.strokeStyle='#333'; ctx.lineWidth=2.5; ctx.stroke();
+  } else {
+    ctx.beginPath(); ctx.arc(0,r*0.28,r*0.16,0,Math.PI);
+    ctx.strokeStyle='#333'; ctx.lineWidth=2.5; ctx.stroke();
+  }
+
+  // Feet
+  ctx.fillStyle = outline;
+  ctx.beginPath(); ctx.ellipse(-r*0.3,r*0.82,r*0.18,r*0.11,-0.2,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(r*0.3,r*0.82,r*0.18,r*0.11,0.2,0,Math.PI*2); ctx.fill();
+
+  ctx.restore();
+}
+
+// ===== MAIN LOOP =====
+let lastTs = 0;
+function loop(ts) {
+  const dt = ts - lastTs; lastTs = ts;
+  ctx.clearRect(0,0,W,H);
+
+  // Ground line
+  ctx.fillStyle = 'rgba(80,180,60,0.2)';
+  ctx.fillRect(0, H*0.78, W, H*0.22);
+  ctx.fillStyle = 'rgba(60,160,40,0.25)';
+  ctx.fillRect(0, H*0.78, W, 5);
+
+  if (gameRunning || gameOver) {
+    // Update positions (recalculate on resize)
+    const alive = Object.values(players).filter(p=>p.alive);
+    const n = Object.keys(players).length;
+    Object.values(players).forEach((p, i) => {
+      const angle = (Math.PI*2*i/n) - Math.PI/2;
+      const rx = Math.min(W*0.3, 220), ry = Math.min(H*0.22, 150);
+      p.x = W/2 + Math.cos(angle)*rx;
+      p.y = H*0.52 + Math.sin(angle)*ry;
+    });
+
+    // Update my player from myState
+    if (players[myId]) {
+      players[myId].hp = myState.hp;
+      players[myId].state = myState.state;
+      players[myId].alive = myState.hp > 0;
+    }
+
+    // Update cooldowns
+    myState.atkCd = Math.max(0, myState.atkCd - dt);
+    myState.parryCd = Math.max(0, myState.parryCd - dt);
+
+    const kirbySize = Math.min(W, H) * 0.072;
+
+    // Draw attack arcs
+    Object.values(players).forEach(atk => {
+      if (atk.state === 'attack') {
+        // Visual indicator
+      }
+    });
+
+    // Draw players
+    Object.values(players).forEach(p => {
+      const isMe = p.id === myId;
+      const state = isMe ? myState.state : p.state;
+      drawKirby(p.x, p.y, p.color, p.outline, kirbySize, state, isMe);
+
+      // Name tag
+      ctx.save();
+      ctx.font = `bold ${kirbySize*0.35}px Fredoka One,cursive`;
+      ctx.textAlign = 'center';
+      ctx.fillStyle = 'white';
+      ctx.strokeStyle = p.outline;
+      ctx.lineWidth = 3;
+      ctx.strokeText(p.name, p.x, p.y - kirbySize*1.4);
+      ctx.fillText(p.name, p.x, p.y - kirbySize*1.4);
+      ctx.restore();
+
+      // Incoming attack arc (me)
+      if (isMe && myState.incomingAtk && !myState.incomingAtk.parried) {
+        const prog = Math.min(1, (Date.now() - myState.incomingAtk.warnStart) / ATTACK_WARN_MS);
+        const atker = players[myState.incomingAtk.attackerId];
+        if (atker) drawArc(atker.x, atker.y, p.x, p.y, prog, atker.color);
+      }
+    });
+
+    // Particles
+    particles = particles.filter(p => {
+      p.x += p.vx; p.y += p.vy; p.vy += 0.2; p.life -= p.decay;
+      return p.life > 0;
+    });
+    particles.forEach(p => {
+      ctx.save(); ctx.globalAlpha = p.life;
+      if (p.emoji) {
+        ctx.font = (p.size*p.life+6)+'px serif';
+        ctx.textAlign='center'; ctx.textBaseline='middle';
+        ctx.fillText(p.emoji, p.x, p.y);
+      } else {
+        ctx.beginPath(); ctx.arc(p.x,p.y,p.size*p.life,0,Math.PI*2);
+        ctx.fillStyle=p.color; ctx.fill();
+      }
+      ctx.restore();
+    });
+
+    // Cooldown indicators for my character
+    if (players[myId]) {
+      const mx = players[myId].x, my = players[myId].y;
+      drawCdRing(mx - kirbySize*1.4, my + kirbySize*0.3, myState.atkCd, ATK_COOLDOWN, players[myId].color, 'F');
+      drawCdRing(mx + kirbySize*1.4, my + kirbySize*0.3, myState.parryCd, PARRY_COOLDOWN, '#ffdd00', 'G');
+    }
+  }
+
+  requestAnimationFrame(loop);
+}
+
+function drawArc(ax, ay, dx, dy, prog, color) {
+  const mx = (ax+dx)/2, my = Math.min(ay,dy)-50;
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2+prog*4;
+  ctx.globalAlpha = 0.5+prog*0.4;
+  ctx.setLineDash([8,5]);
+  ctx.beginPath();
+  for (let t=0; t<=prog; t+=0.05) {
+    const bx=(1-t)*(1-t)*ax+2*(1-t)*t*mx+t*t*dx;
+    const by=(1-t)*(1-t)*ay+2*(1-t)*t*my+t*t*dy;
+    t===0?ctx.moveTo(bx,by):ctx.lineTo(bx,by);
+  }
+  ctx.stroke(); ctx.setLineDash([]);
+  const t=prog;
+  const bx=(1-t)*(1-t)*ax+2*(1-t)*t*mx+t*t*dx;
+  const by=(1-t)*(1-t)*ay+2*(1-t)*t*my+t*t*dy;
+  ctx.font='20px serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText('👊',bx,by);
+  ctx.restore();
+}
+
+function drawCdRing(x, y, cd, maxCd, color, key) {
+  const r = 15;
+  ctx.save(); ctx.translate(x,y);
+  ctx.beginPath(); ctx.arc(0,0,r,0,Math.PI*2);
+  ctx.fillStyle='rgba(255,255,255,0.8)'; ctx.fill();
+  if (cd > 0) {
+    ctx.beginPath(); ctx.moveTo(0,0);
+    ctx.arc(0,0,r,-Math.PI/2,-Math.PI/2+Math.PI*2*(cd/maxCd));
+    ctx.closePath();
+    ctx.fillStyle='rgba(0,0,0,0.3)'; ctx.fill();
+  }
+  ctx.strokeStyle=color; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.arc(0,0,r,0,Math.PI*2); ctx.stroke();
+  ctx.fillStyle=cd>0?'#999':'#333';
+  ctx.font='bold 10px Fredoka One,cursive';
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText(key,0,0);
+  ctx.restore();
+}
+
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
